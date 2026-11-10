@@ -1,0 +1,57 @@
+# Visual Studio / Rider
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Сборка
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM64/
+[Aa][Rr][Mm]/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+!**/packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Publish / single-file
+publish/
+*.pubxml
+*.publishproj
+
+# Тесты
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Файлы ОС
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Бекапы и временные
+*.bak
+*.cache
+*.tmp
+*.temp
+*.swp
+*~
+
+# Секреты (на будущее, когда добавишь конфиг)
+appsettings.local.json
+secrets.json
+.env

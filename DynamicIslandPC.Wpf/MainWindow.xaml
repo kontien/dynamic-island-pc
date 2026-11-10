@@ -1,0 +1,189 @@
+﻿<Window x:Class="DynamicIslandPC.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Dynamic Island PC"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Width="280" Height="44"
+        WindowStartupLocation="Manual"
+        AllowDrop="True"
+        DragOver="Window_DragOver"
+        Drop="Window_Drop">
+
+    <Window.Resources>
+        <DropShadowEffect x:Key="IslandShadow"
+                          BlurRadius="22"
+                          ShadowDepth="0"
+                          Color="#000000"
+                          Opacity="0.55"/>
+
+        <!-- Стиль кнопки-устройства -->
+        <Style x:Key="DeviceButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль иконки-кнопки -->
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#EBEBEB"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="IslandBorder"
+            Background="#0C0C0C"
+            CornerRadius="22"
+            Effect="{StaticResource IslandShadow}">
+
+        <Grid>
+            <!-- ХЕДЕР -->
+            <Grid x:Name="HeaderGrid" Height="44" VerticalAlignment="Top">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="44"/>
+                    <ColumnDefinition Width="44"/>
+                    <ColumnDefinition Width="52"/>
+                    <ColumnDefinition Width="52"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="ClockText" Text="12:00" FontSize="12" Foreground="#EBEBEB"
+                           VerticalAlignment="Center" HorizontalAlignment="Left" Margin="14,0,0,0"/>
+                <TextBlock x:Name="LayoutText" Text="EN" FontSize="12" FontWeight="Bold" Foreground="#EBEBEB"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="1"/>
+                <TextBlock x:Name="CapsText" Text="CAPS" FontSize="9" FontWeight="Bold" Foreground="#F7B84F"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="2" Visibility="Collapsed"/>
+                <TextBlock x:Name="ShelfCountText" Text="📎 0" FontSize="10" FontWeight="Bold" Foreground="#4F8FF7"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="3" Visibility="Collapsed"/>
+                <TextBlock x:Name="ClipboardCountText" Text="📋 0" FontSize="10" FontWeight="Bold" Foreground="#F74F8F"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="4" Visibility="Collapsed"/>
+            </Grid>
+
+            <!-- OSD -->
+            <Grid x:Name="OsdGrid" Height="44" VerticalAlignment="Top" Visibility="Collapsed">
+                <TextBlock x:Name="VolumeIconText" Text="🔊" FontSize="22" Foreground="#EBEBEB"
+                           VerticalAlignment="Center" HorizontalAlignment="Left" Margin="20,0,0,0"/>
+                <TextBlock x:Name="VolumePercentText" Text="50%" FontSize="15" FontWeight="Bold" Foreground="#EBEBEB"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,22,0"/>
+            </Grid>
+
+            <!-- РАСКРЫТАЯ ПАНЕЛЬ -->
+            <Grid x:Name="ExpandedGrid" Visibility="Collapsed" Margin="18,14,18,14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- 0 заголовок громкости -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 1 слайдер -->
+                    <RowDefinition Height="14"/>
+                    <!-- 2 отступ -->
+                    <RowDefinition Height="1"/>
+                    <!-- 3 разделитель -->
+                    <RowDefinition Height="14"/>
+                    <!-- 4 отступ -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 5 заголовок устройств -->
+                    <RowDefinition Height="92"/>
+                    <!-- 6 список устройств -->
+                    <RowDefinition Height="1"/>
+                    <!-- 7 разделитель -->
+                    <RowDefinition Height="14"/>
+                    <!-- 8 отступ -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 9 заголовок полки -->
+                    <RowDefinition Height="92"/>
+                    <!-- 10 полка -->
+                    <RowDefinition Height="1"/>
+                    <!-- 11 разделитель -->
+                    <RowDefinition Height="14"/>
+                    <!-- 12 отступ -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- 13 заголовок буфера -->
+                    <RowDefinition Height="*"/>
+                    <!-- 14 буфер -->
+                </Grid.RowDefinitions>
+
+                <!-- Громкость -->
+                <TextBlock Grid.Row="0" Text="🔊  Громкость" FontSize="13" FontWeight="SemiBold" Foreground="#EBEBEB" Margin="2,0,0,6"/>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="64"/>
+                    </Grid.ColumnDefinitions>
+                    <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="50" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="VolumeValueText" Grid.Column="1" Text="50%" FontSize="16" FontWeight="Bold" Foreground="#8C78FF"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Grid>
+
+                <Border Grid.Row="3" Background="#FFFFFF" Opacity="0.08" Height="1"/>
+
+                <!-- Устройства -->
+                <TextBlock Grid.Row="5" Text="🔌  Устройство вывода" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBEB" Margin="2,0,0,6"/>
+                <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+                    <StackPanel x:Name="DevicesStack"/>
+                </ScrollViewer>
+
+                <Border Grid.Row="7" Background="#FFFFFF" Opacity="0.08" Height="1"/>
+
+                <!-- Полка -->
+                <TextBlock Grid.Row="9" Text="📎  Полка" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBEB" Margin="2,0,0,6"/>
+                <ScrollViewer Grid.Row="10" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+                    <StackPanel x:Name="ShelfStack"/>
+                </ScrollViewer>
+
+                <Border Grid.Row="11" Background="#FFFFFF" Opacity="0.08" Height="1"/>
+
+                <!-- Буфер -->
+                <Grid Grid.Row="13" Margin="2,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="📋  Буфер обмена" FontSize="12" FontWeight="SemiBold" Foreground="#EBEBEB" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="🗑 Очистить" Style="{StaticResource IconButton}" Width="80" Height="24" FontSize="10" Click="ClearClipboard_Click"/>
+                </Grid>
+                <ScrollViewer Grid.Row="14" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+                    <StackPanel x:Name="ClipboardStack"/>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
