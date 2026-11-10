@@ -11,6 +11,7 @@ namespace DynamicIslandPC.Wpf.Services
     {
         private const int MaxHistory = 50;
         private bool _isRestoring = false;
+        private DateTime _lastCaptureTime = DateTime.MinValue;
 
         public List<ClipboardItem> History { get; } = new();
         public event EventHandler? HistoryChanged;
@@ -18,6 +19,11 @@ namespace DynamicIslandPC.Wpf.Services
         public void OnClipboardChanged()
         {
             if (_isRestoring) return;
+
+            // Debounce: игнорируем события чаще чем раз в 300ms
+            var now = DateTime.UtcNow;
+            if ((now - _lastCaptureTime).TotalMilliseconds < 300) return;
+            _lastCaptureTime = now;
 
             try
             {
