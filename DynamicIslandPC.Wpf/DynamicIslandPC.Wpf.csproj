@@ -2,7 +2,6 @@
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<!-- Обязательно для работы WinRT API (SMTC) -->
 		<TargetFramework>net8.0-windows10.0.22000.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -11,15 +10,11 @@
 		<AssemblyName>DynamicIslandPC</AssemblyName>
 		<RootNamespace>DynamicIslandPC.Wpf</RootNamespace>
 		<ApplicationIcon Condition="Exists('Icon.ico')">Icon.ico</ApplicationIcon>
-
 		<Product>Dynamic Island PC</Product>
 		<AssemblyTitle>Dynamic Island PC</AssemblyTitle>
-		<Company>Dynamic Island PC</Company>
 		<Version>1.0.0</Version>
 		<FileVersion>1.0.0.0</FileVersion>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
-
-		<!-- убираем лишние языковые пакеты из вывода -->
 		<SatelliteResourceLanguages>ru;en</SatelliteResourceLanguages>
 	</PropertyGroup>
 
@@ -29,10 +24,8 @@
 		<PackageReference Include="Dubya.WindowsMediaController" Version="2.5.6" />
 	</ItemGroup>
 
-	<!-- SoundVolumeView остаётся ОТДЕЛЬНЫМ файлом рядом с exe (внутрь single-file его класть нельзя) -->
 	<ItemGroup>
-		<Content Include="tools\SoundVolumeView.exe"
-				 Condition="Exists('tools\SoundVolumeView.exe')">
+		<Content Include="tools\SoundVolumeView.exe" Condition="Exists('tools\SoundVolumeView.exe')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
