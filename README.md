@@ -1,93 +1,46 @@
-# Dynamic Island PC (WPF)
+# 🏝️ Dynamic Island for Windows PC
 
-Динамический «остров» для Windows в стиле iPhone Dynamic Island — живёт сверху экрана,
-раскрывается по наведению курсора и показывает часы, раскладку, Caps Lock, громкость,
-смену аудиоустройств, полку файлов и стек буфера обмена.
+Премиальный виджет-панель для Windows в стиле Apple Dynamic Island. Парящий HUD с размытием, плавными пружинными анимациями и управлением системой прямо с рабочего стола.
 
-Написан на **C# / .NET 8 / WPF**. Рендер через DirectX — плавные анимации и гладкие
-скруглённые углы без пикселизации (в отличие от WinForms-версии).
+![Dynamic Island](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D6?style=for-the-badge&logo=windows)
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)
+![WPF](https://img.shields.io/badge/WPF-C%23-blue?style=for-the-badge&logo=c-sharp)
 
-![Скриншот](docs/screenshot.png)
-> _Добавь скриншот в папку `docs/` — пока placeholder._
+---
 
-## Возможности
+## ✨ Основные возможности
 
-| Фича | Описание |
-|---|---|
-| 🕐 Часы | Локальное время `HH:mm`, обновление раз в секунду |
-| ⌨️ Раскладка | RU / EN индикатор + подсветка Caps Lock |
-| 🔊 Громкость | OSD при изменении системных клавиш + слайдер в панели |
-| 🔌 Аудиоустройства | Переключение вывода **через COM `IPolicyConfig`** — без прав администратора |
-| 📎 Полка | Drag&Drop файлов на остров; открыть / папка / копировать / удалить |
-| 📋 Буфер обмена | История текста, изображений и HEX-цветов с превью; клик — восстановить |
-| ✨ Hover-анимация | Раскрытие при наведении, сворачивание при уходе курсора, spring-easing |
-| 🌑 Тень и углы | `DropShadowEffect` + нативные скругления Windows 11 через DWM |
+*   **🎨 Premium UI/UX**: Тёмный glassmorphism, идеальные скругления (24px), отказ от визуального мусора (теней и жестких обводок).
+*   **🍏 Apple-style Spring Animations**: Плавное раскрытие и сворачивание с кастомной кривой Безье (EaseOutExpo). Адаптивная ширина: свернутый остров (280px) плавно расширяется до панели управления (580px).
+*   **🎵 Media Control (SMTC)**: Интеграция с System Media Transport Controls. Показывает текущий трек из YouTube/Spotify, обложку и позволяет управлять воспроизведением (Play/Pause/Next/Prev).
+*   **🔊 Умное аудио**: 
+    *   Переключение громкости системы.
+    *   Быстрый выбор устройств вывода (динамики/наушники) через стильное контекстное меню.
+*   **🛡️ VPN Интеграция**: Управление VPN (Quattro VPN) прямо из острова. Автоматически отслеживает статус сетевого адаптера и меняет цвет/иконку. Умеет работать в фоне.
+*   **📋 Буфер обмена**: История копирований (текст, картинки, цвета) с умной оптимизацией памяти (сжатие превью) и защитой от крашей при занятом буфере (Retry-логика).
+*   **📁 Полка файлов**: Drag & Drop зона. Перетаскивай файлы в остров, а затем вытаскивай их оттуда в любые другие приложения (Проводник, Telegram и т.д.).
+*   **📊 Мониторинг системы**: Стильные кольцевые индикаторы ЦП, ОЗУ и ГПУ в шапке. При раскрытии масштабируются в подробные показатели.
+*   **🎮 Gamer Mode (Микроточка)**: Если в системе запущена полноэкранная игра, остров автоматически сжимается в крошечную точку, чтобы не перекрывать интерфейс.
+*   **🖱️ Умный OSD**: При изменении громкости всплывает аккуратный индикатор. Клик по нему открывает системный микшер Windows.
+*   **🛡️ Single Instance**: Защита от случайного запуска нескольких копий приложения (через Mutex).
+*   **📝 Логирование**: Глобальный перехват ошибок с записью в `%LOCALAPPDATA%\DynamicIslandPC\logs`.
 
-## Требования
+---
 
-- Windows 10 22H2 / Windows 11
-- .NET 8 SDK
-- Visual Studio 2022 (или Rider)
+## 🚀 Технологии
 
-## Сборка и запуск
+*   **Language**: C# 12
+*   **Framework**: .NET 8.0 (Windows)
+*   **UI**: WPF (Windows Presentation Foundation)
+*   **Аудио**: NAudio
+*   **Медиа-сессии**: Dubya.WindowsMediaController (SMTC)
+*   **WinAPI**: User32, DwmApi, Pdh (для мониторинга ГПУ)
 
-```bash
-# из корня репозитория
-dotnet restore
-dotnet build -c Release
-dotnet run --project DynamicIslandPC.Wpf -c Release
-```
+---
 
-Или просто открой `.sln` в Visual Studio → **F5**.
+## 🛠️ Установка и запуск
 
-### Зависимости
-
-- **NAudio** (NuGet) — CoreAudio API для громкости и устройств.
-- **SoundVolumeView.exe** (NirSoft, лежит в `tools/`) — fallback для смены устройства,
-  если COM-путь недоступен. Источник: https://www.nirsoft.net/utils/sound_volume_view.html
-  (freeware). В обычной работе не требуется — COM переключает устройства сам.
-
-## Структура проекта
-
-```
-DynamicIslandPC.Wpf/
-├─ App.xaml / App.xaml.cs        # точка входа
-├─ MainWindow.xaml / .cs         # остров: XAML-разметка + логика UI
-├─ Models/
-│  └─ ClipboardItem.cs           # модель элемента буфера
-├─ Services/
-│  ├─ AudioService.cs            # NAudio + COM IPolicyConfig
-│  ├─ ClipboardService.cs        # мониторинг и история буфера
-│  ├─ LayoutService.cs           # раскладка + Caps Lock (Win32)
-│  └─ ShelfService.cs            # полка файлов
-└─ Helpers/
-   └─ NativeMethods.cs           # P/Invoke: user32, dwmapi
-```
-
-## Как это работает (кратко)
-
-- **Hover** — `DispatcherTimer` каждые 80 мс сравнивает позицию курсора (`GetCursorPos`)
-  с физическими границами окна (`GetWindowRect`). Сравнение в физических пикселях, поэтому
-  корректно работает при любом DPI-масштабе (125%, 150%, …).
-- **Анимация** — `DoubleAnimation` + `CubicEase(EaseOut)` на `Width/Height/Left`. Флаг
-  `_isAnimating` блокирует повторные триггеры, чтобы остров не «дёргался».
-- **Буфер** — `AddClipboardFormatListener` + перехват `WM_CLIPBOARDUPDATE` через `HwndSource`.
-  Мгновенно, без polling.
-- **Смена устройства** — COM `IPolicyConfig::SetDefaultEndpoint`. Работает без UAC.
-  `SoundVolumeView` остаётся как запасной путь.
-
-## Roadmap
-
-- [ ] Иконка в системном трее + автостарт с Windows
-- [ ] Конфиг JSON (позиция, вкл/выкл фич, горячие клавиши)
-- [ ] Single-instance защита
-- [ ] P1: Bluetooth-статус и заряд наушников
-- [ ] P1: индикатор сети / потеря интернета
-- [ ] P1: быстрая заметка по хоткею
-- [ ] P1: режим «Не беспокоить»
-- [ ] Drag-out файлов из полки (боремся с UIPI/TopMost)
-
-## Лицензия
-
-MIT (добавь `LICENSE`, если хочешь открытую лицензию).
-`SoundVolumeView.exe` — отдельная freeware-лицензия NirSoft.
+1. Убедитесь, что у вас установлен **.NET 8 SDK**.
+2. Склонируйте репозиторий:
+   ```bash
+   git clone https://github.com/kontien/dynamic-island-pc.git

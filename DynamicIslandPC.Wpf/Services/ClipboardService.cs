@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using DynamicIslandPC.Wpf.Helpers;
 using DynamicIslandPC.Wpf.Models;
 
 namespace DynamicIslandPC.Wpf.Services
@@ -19,8 +21,6 @@ namespace DynamicIslandPC.Wpf.Services
         public void OnClipboardChanged()
         {
             if (_isRestoring) return;
-
-            // Debounce: игнорируем события чаще чем раз в 300ms
             var now = DateTime.UtcNow;
             if ((now - _lastCaptureTime).TotalMilliseconds < 300) return;
             _lastCaptureTime = now;
@@ -33,9 +33,7 @@ namespace DynamicIslandPC.Wpf.Services
                     History.Insert(0, item);
                     if (History.Count > MaxHistory)
                         History.RemoveAt(History.Count - 1);
-
                     HistoryChanged?.Invoke(this, EventArgs.Empty);
-                    Console.WriteLine($"[Clipboard] Added: {item.Type}");
                 }
             }
             catch (Exception ex)
@@ -53,11 +51,13 @@ namespace DynamicIslandPC.Wpf.Services
                     var img = Clipboard.GetImage();
                     if (img != null)
                     {
+                        // ОПТИМИЗАЦИЯ ПАМЯТИ: сжимаем до 300px и замораживаем
+                        var resized = ResizeImage(img, 300);
                         return new ClipboardItem
                         {
                             Type = ClipboardItemType.Image,
-                            Image = img,
-                            DisplayText = $"Изображение {img.PixelWidth}×{img.PixelHeight}",
+                            Image = resized,
+                            DisplayText = $"Изображение {resized.PixelWidth}×{resized.PixelHeight}",
                             Timestamp = DateTime.Now
                         };
                     }
@@ -80,21 +80,30 @@ namespace DynamicIslandPC.Wpf.Services
                 if (Regex.IsMatch(text.Trim(), @"^#[0-9A-Fa-f]{6}$"))
                 {
                     item.Type = ClipboardItemType.Color;
-                    try
-                    {
-                        item.Color = (Color)ColorConverter.ConvertFromString(text.Trim());
-                    }
+                    try { item.Color = (Color)ColorConverter.ConvertFromString(text.Trim()); }
                     catch { item.Type = ClipboardItemType.Text; }
                 }
-                else
-                {
-                    item.Type = ClipboardItemType.Text;
-                }
+                else item.Type = ClipboardItemType.Text;
 
                 return item;
             }
 
             return null;
+        }
+
+        private BitmapSource ResizeImage(BitmapSource source, int maxWidth)
+        {
+            if (source.PixelWidth <= maxWidth)
+            {
+                source.Freeze();
+                return source;
+            }
+
+            double scale = (double)maxWidth / source.PixelWidth;
+            var transform = new ScaleTransform(scale, scale);
+            var resized = new TransformedBitmap(source, transform);
+            resized.Freeze();
+            return resized;
         }
 
         private bool IsDuplicate(ClipboardItem item)
@@ -111,8 +120,7 @@ namespace DynamicIslandPC.Wpf.Services
 
         private string TruncateText(string text, int maxLength)
         {
-            text = text.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ").Replace("\t", " ");
-            text = text.Trim();
+            text = text.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
             return text.Length > maxLength ? text.Substring(0, maxLength) + "…" : text;
         }
 
@@ -121,15 +129,15 @@ namespace DynamicIslandPC.Wpf.Services
             try
             {
                 _isRestoring = true;
-
-                if (item.Type == ClipboardItemType.Image && item.Image != null)
-                    Clipboard.SetImage(item.Image);
-                else if (item.Type == ClipboardItemType.Color && item.Color.HasValue)
-                    Clipboard.SetText(new ColorConverter().ConvertToString(item.Color.Value));
-                else if (!string.IsNullOrEmpty(item.Text))
-                    Clipboard.SetText(item.Text);
-
-                Console.WriteLine($"[Clipboard] Restored: {item.Type}");
+                ClipboardHelper.RetryAction(() =>
+                {
+                    if (item.Type == ClipboardItemType.Image && item.Image != null)
+                        Clipboard.SetImage(item.Image);
+                    else if (item.Type == ClipboardItemType.Color)
+                        Clipboard.SetText(!string.IsNullOrEmpty(item.Text) ? item.Text : new ColorConverter().ConvertToString(item.Color!.Value));
+                    else if (!string.IsNullOrEmpty(item.Text))
+                        Clipboard.SetText(item.Text);
+                });
             }
             catch (Exception ex)
             {
@@ -137,10 +145,7 @@ namespace DynamicIslandPC.Wpf.Services
             }
             finally
             {
-                var timer = new System.Windows.Threading.DispatcherTimer
-                {
-                    Interval = TimeSpan.FromMilliseconds(150)
-                };
+                var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
                 timer.Tick += (s, e) => { _isRestoring = false; timer.Stop(); };
                 timer.Start();
             }

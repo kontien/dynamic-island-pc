@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using DynamicIslandPC.Wpf.Helpers;
 
 namespace DynamicIslandPC.Wpf.Services
 {
@@ -21,17 +22,14 @@ namespace DynamicIslandPC.Wpf.Services
                 {
                     Files.Add(file);
                     added = true;
-                    Console.WriteLine($"[Shelf] Added: {file}");
                 }
             }
-            if (added)
-                Changed?.Invoke(this, EventArgs.Empty);
+            if (added) Changed?.Invoke(this, EventArgs.Empty);
         }
 
         public void Remove(string file)
         {
-            if (Files.Remove(file))
-                Changed?.Invoke(this, EventArgs.Empty);
+            if (Files.Remove(file)) Changed?.Invoke(this, EventArgs.Empty);
         }
 
         public void Clear()
@@ -44,9 +42,11 @@ namespace DynamicIslandPC.Wpf.Services
         {
             try
             {
-                var collection = new StringCollection();
-                collection.Add(filePath);
-                Clipboard.SetFileDropList(collection);
+                ClipboardHelper.RetryAction(() =>
+                {
+                    var collection = new StringCollection { filePath };
+                    Clipboard.SetFileDropList(collection);
+                });
             }
             catch (Exception ex)
             {
@@ -56,28 +56,14 @@ namespace DynamicIslandPC.Wpf.Services
 
         public static void Open(string filePath)
         {
-            try
-            {
-                if (File.Exists(filePath))
-                    Process.Start(new ProcessStartInfo { FileName = filePath, UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Shelf] Open failed: {ex.Message}");
-            }
+            try { if (File.Exists(filePath)) Process.Start(new ProcessStartInfo { FileName = filePath, UseShellExecute = true }); }
+            catch (Exception ex) { Console.WriteLine($"[Shelf] Open failed: {ex.Message}"); }
         }
 
         public static void OpenFolder(string filePath)
         {
-            try
-            {
-                if (File.Exists(filePath))
-                    Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Shelf] OpenFolder failed: {ex.Message}");
-            }
+            try { if (File.Exists(filePath)) Process.Start("explorer.exe", $"/select,\"{filePath}\""); }
+            catch (Exception ex) { Console.WriteLine($"[Shelf] OpenFolder failed: {ex.Message}"); }
         }
 
         public static string GetFileIcon(string extension)

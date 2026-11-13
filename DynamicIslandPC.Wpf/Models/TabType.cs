@@ -3,9 +3,8 @@
     public enum TabType
     {
         Sound,
-        Shelf,
         Clipboard,
-        Player,
-        System // <-- ДОБАВИТЬ ЭТУ СТРОКУ
+        Shelf,
+        Vpn
     }
 }

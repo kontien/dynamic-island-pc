@@ -173,7 +173,10 @@ namespace DynamicIslandPC.Wpf.Services
         private void Reconnect()
         {
             if (_device != null)
+            {
                 _device.AudioEndpointVolume.OnVolumeNotification -= OnVolumeNotification;
+                _device.Dispose(); // <--- Уничтожаем старую ссылку
+            }
 
             _device = _enumerator?.GetDefaultAudioEndpoint(DataFlow.Render, Role.Console);
             if (_device != null)
@@ -187,7 +190,13 @@ namespace DynamicIslandPC.Wpf.Services
         public void Dispose()
         {
             if (_device != null)
+            {
                 _device.AudioEndpointVolume.OnVolumeNotification -= OnVolumeNotification;
+                _device.Dispose();
+                _device = null;
+            }
+            _enumerator?.Dispose();
+            _enumerator = null;
         }
     }
 }

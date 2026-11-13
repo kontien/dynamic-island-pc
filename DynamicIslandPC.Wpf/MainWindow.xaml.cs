@@ -1,73 +1,89 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
+using System.Windows.Threading;
 using DynamicIslandPC.Wpf.Helpers;
 using DynamicIslandPC.Wpf.Models;
 using DynamicIslandPC.Wpf.Services;
-
 using IOPath = System.IO.Path;
 
 namespace DynamicIslandPC.Wpf
 {
+    public sealed class SpringEase : EasingFunctionBase
+    {
+        public double Stiffness { get; set; } = 170;
+        public double Damping { get; set; } = 20;
+        private static double S(double t, double w0, double z)
+        {
+            if (z < 1) { double wd = w0 * Math.Sqrt(1 - z * z); return 1 - Math.Exp(-z * w0 * t) * (Math.Cos(wd * t) + (z * w0 / wd) * Math.Sin(wd * t)); }
+            return 1 - Math.Exp(-w0 * t) * (1 + w0 * t);
+        }
+        protected override double EaseInCore(double t)
+        {
+            double w0 = Math.Sqrt(Stiffness), z = Damping / (2 * w0);
+            return S(t, w0, z) / Math.Max(1e-6, S(1, w0, z));
+        }
+        protected override Freezable CreateInstanceCore() => new SpringEase();
+    }
+
     public partial class MainWindow : Window
     {
-        private const int COLLAPSED_WIDTH = 280;
-        private const int COLLAPSED_HEIGHT = 44;
-        private const int EXPANDED_WIDTH = 420;
-        private const int EXPANDED_HEIGHT = 520;
-        private const int ANIM_MS = 450;
+        private const int COLLAPSED_WIDTH = 320;
+        private const int COLLAPSED_HEIGHT = 48;
+        private const int EXPANDED_WIDTH = 620;
+        private const int EXPANDED_HEIGHT = 360;
+        private const int DOT_WIDTH = 22;
+        private const int DOT_HEIGHT = 22;
         private const double SWIPE_THRESHOLD = 60;
+        private const int WM_NCHITTEST = 0x0084;
+        private const int HTTRANSPARENT = -1;
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+        [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
+        private static readonly FontFamily IconFont = new("Segoe MDL2 Assets");
+        private static readonly TabType[] TabOrder = { TabType.Sound, TabType.Clipboard, TabType.Shelf, TabType.Vpn };
 
         private readonly AudioService _audio;
+        private readonly AppVolumeService _appVolume = new();
         private readonly ClipboardService _clipboard;
         private readonly LayoutService _layout;
         private readonly ShelfService _shelf;
-        private readonly PlayerService _player = new();
         private readonly SystemMonitorService _systemMonitor = new();
+        private readonly MediaSessionService _mediaSession = new();
+        private readonly VpnService _vpnService = new();
 
         private IntPtr _hwnd;
-        private bool _isExpanded;
-        private bool _isAnimating;
-        private bool _isUpdatingVolume;
-        private TabType _activeTab = TabType.Sound;
-        private bool _swipeArmed, _swipeMoved;
+        private bool _isExpanded, _isAnimating, _isUpdatingVolume, _osdShown, _isVpnToggling, _isFullScreen;
+        private bool _swipeArmed, _swipeMoved, _isDraggingOut;
         private double _swipeStartX;
-        private bool _isUpdatingSeek;
+        private Point _dragStartPoint;
+        private TabType _activeTab = TabType.Sound;
 
         private readonly Dictionary<TabType, (Button btn, Grid panel)> _tabs = new();
-
-        private readonly System.Windows.Threading.DispatcherTimer _clockTimer = new();
-        private readonly System.Windows.Threading.DispatcherTimer _osdHideTimer = new();
-        private readonly System.Windows.Threading.DispatcherTimer _layoutTimer = new();
-        private readonly System.Windows.Threading.DispatcherTimer _hoverTimer = new();
-        private readonly System.Windows.Threading.DispatcherTimer _playerPosTimer = new();
-        private readonly System.Windows.Threading.DispatcherTimer _activeWindowTimer = new();
-        private readonly System.Windows.Threading.DispatcherTimer _systemMonitorTimer = new();
+        private readonly DispatcherTimer _clockTimer = new();
+        private readonly DispatcherTimer _osdHideTimer = new();
+        private readonly DispatcherTimer _layoutTimer = new();
+        private readonly DispatcherTimer _hoverTimer = new();
+        private readonly DispatcherTimer _systemMonitorTimer = new();
 
         public MainWindow()
         {
-            string appDir = AppDomain.CurrentDomain.BaseDirectory;
-            string svvPath = IOPath.Combine(appDir, "tools", "SoundVolumeView.exe");
-            if (!File.Exists(svvPath))
-            {
-                string projectDir = IOPath.GetFullPath(IOPath.Combine(appDir, "..", "..", ".."));
-                svvPath = IOPath.Combine(projectDir, "tools", "SoundVolumeView.exe");
-            }
+            string svvPath = ResolveSvvPath();
 
             _audio = new AudioService(svvPath);
             _clipboard = new ClipboardService();
@@ -75,15 +91,16 @@ namespace DynamicIslandPC.Wpf
             _shelf = new ShelfService();
 
             InitializeComponent();
+            _appVolume.Start();
 
             _tabs[TabType.Sound] = (SoundTabBtn, SoundTab);
-            _tabs[TabType.Shelf] = (ShelfTabBtn, ShelfTab);
             _tabs[TabType.Clipboard] = (ClipboardTabBtn, ClipboardTab);
-            _tabs[TabType.Player] = (PlayerTabBtn, PlayerTab);
-            _tabs[TabType.System] = (SystemTabBtn, SystemTab);
+            _tabs[TabType.Shelf] = (ShelfTabBtn, ShelfTab);
+            _tabs[TabType.Vpn] = (VpnTabBtn, VpnTab);
 
+            UpdateClock();
             _clockTimer.Interval = TimeSpan.FromSeconds(1);
-            _clockTimer.Tick += (s, e) => ClockText.Text = DateTime.Now.ToString("HH:mm");
+            _clockTimer.Tick += (s, e) => UpdateClock();
             _clockTimer.Start();
 
             _osdHideTimer.Interval = TimeSpan.FromSeconds(2);
@@ -97,61 +114,115 @@ namespace DynamicIslandPC.Wpf
             _hoverTimer.Tick += (s, e) => CheckHover();
             _hoverTimer.Start();
 
-            _playerPosTimer.Interval = TimeSpan.FromMilliseconds(500);
-            _playerPosTimer.Tick += (s, e) => UpdatePlayerPosition();
-            _playerPosTimer.Start();
-
-            _activeWindowTimer.Interval = TimeSpan.FromSeconds(1);
-            _activeWindowTimer.Tick += (s, e) => UpdateActiveWindow();
-            _activeWindowTimer.Start();
-
             _systemMonitorTimer.Interval = TimeSpan.FromSeconds(1);
             _systemMonitorTimer.Tick += (s, e) => _systemMonitor.Poll();
             _systemMonitorTimer.Start();
 
             SubscribeServices();
 
+            _mediaSession.TrackChanged += (title, artist, cover) => Dispatcher.Invoke(() =>
+            {
+                PlayerTitleText.Text = string.IsNullOrEmpty(title) ? "Нет трека" : title;
+                PlayerArtistText.Text = string.IsNullOrEmpty(artist) ? "YouTube / Spotify" : artist;
+                if (cover != null) { PlayerCoverBorder.Background = new ImageBrush(cover) { Stretch = Stretch.UniformToFill }; PlayerCoverText.Visibility = Visibility.Collapsed; }
+                else { PlayerCoverBorder.Background = new SolidColorBrush(Color.FromRgb(38, 51, 74)); PlayerCoverText.Visibility = Visibility.Visible; }
+            });
+            _mediaSession.PlaybackStateChanged += (isPlaying) => Dispatcher.Invoke(() =>
+            {
+                PlayPauseBtn.Content = isPlaying ? "\uE769" : "\uE768";
+            });
+            _mediaSession.Start();
+
+            _vpnService.StatusChanged += (isConnected) => Dispatcher.Invoke(() => UpdateVpnUi(isConnected));
+            UpdateVpnUi(_vpnService.IsConnected);
+
+            _isUpdatingVolume = true;
             VolumeSlider.Value = _audio.CurrentVolume;
+            _isUpdatingVolume = false;
             VolumeValueText.Text = $"{_audio.CurrentVolume}%";
-            OsdPercentText.Text = $"{_audio.CurrentVolume}%";
-            OsdProgress.Value = _audio.CurrentVolume;
+            UpdateOsdUi("Система", _audio.CurrentVolume);
             VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
 
-            PlayerVolSlider.Value = _player.Volume * 100;
-            PlayerVolText.Text = $"{(int)(_player.Volume * 100)}%";
-            PlayerVolSlider.ValueChanged += PlayerVolSlider_ValueChanged;
-            PlayerSeekSlider.ValueChanged += PlayerSeekSlider_ValueChanged;
-
-            BuildDeviceList();
             BuildShelfList();
             BuildClipboardList();
-            BuildPlaylist();
-            UpdatePlayerTrackUi();
-            UpdateActiveWindow();
-
             SelectTab(TabType.Sound);
 
-            Left = (SystemParameters.WorkArea.Width - COLLAPSED_WIDTH) / 2;
-            Top = SystemParameters.WorkArea.Top + 6;
+            Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - 800) / 2;
+            Top = SystemParameters.WorkArea.Top;
+
+            Loaded += MainWindow_Loaded;
+        }
+
+        private static string ResolveSvvPath()
+        {
+            var candidates = new List<string>();
+            string? exeDir = IOPath.GetDirectoryName(Environment.ProcessPath);
+            if (!string.IsNullOrEmpty(exeDir)) candidates.Add(IOPath.Combine(exeDir, "tools", "SoundVolumeView.exe"));
+            candidates.Add(IOPath.Combine(AppContext.BaseDirectory, "tools", "SoundVolumeView.exe"));
+            try
+            {
+                string projectDir = IOPath.GetFullPath(IOPath.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+                candidates.Add(IOPath.Combine(projectDir, "tools", "SoundVolumeView.exe"));
+            }
+            catch { }
+            foreach (var p in candidates) if (File.Exists(p)) return p;
+            return candidates[0];
+        }
+
+        private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
+        {
+            var st = new ScaleTransform(0.94, 0.94);
+            IslandBorder.RenderTransformOrigin = new Point(0.5, 0.5);
+            IslandBorder.RenderTransform = st;
+            IslandBorder.Opacity = 0;
+            Anim(IslandBorder, OpacityProperty, 1, 320, EaseOut());
+            Anim(st, ScaleTransform.ScaleXProperty, 1, 520, Spring());
+            Anim(st, ScaleTransform.ScaleYProperty, 1, 520, Spring());
+        }
+
+        private static SpringEase Spring() => new() { Stiffness = 180, Damping = 22, EasingMode = EasingMode.EaseIn };
+        private static CubicEase EaseOut() => new() { EasingMode = EasingMode.EaseOut };
+        private static CubicEase EaseIn() => new() { EasingMode = EasingMode.EaseIn };
+
+        private static void Anim(IAnimatable o, DependencyProperty p, double to, double ms, IEasingFunction? ease = null, double delay = 0, EventHandler? done = null)
+        {
+            var a = new DoubleAnimation(to, TimeSpan.FromMilliseconds(ms));
+            if (ease != null) a.EasingFunction = ease;
+            if (delay > 0) a.BeginTime = TimeSpan.FromMilliseconds(delay);
+            if (done != null) a.Completed += done;
+            o.BeginAnimation(p, a);
+        }
+
+        private static TranslateTransform EnsureTranslate(UIElement e)
+        {
+            if (e.RenderTransform is TranslateTransform t) return t;
+            t = new TranslateTransform(); e.RenderTransform = t; return t;
         }
 
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            _hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            _hwnd = new WindowInteropHelper(this).Handle;
             NativeMethods.AddClipboardFormatListener(_hwnd);
-            var src = System.Windows.Interop.HwndSource.FromHwnd(_hwnd);
-            src?.AddHook(WndProc);
-
-            int pref = 2;
-            NativeMethods.DwmSetWindowAttribute(_hwnd, NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
-            int border = NativeMethods.DWMWA_COLOR_NONE;
-            NativeMethods.DwmSetWindowAttribute(_hwnd, NativeMethods.DWMWA_BORDER_COLOR, ref border, sizeof(int));
+            HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc);
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == NativeMethods.WM_CLIPBOARDUPDATE) { _clipboard.OnClipboardChanged(); handled = true; }
+            if (msg == WM_NCHITTEST)
+            {
+                int x = (short)(lParam.ToInt64() & 0xFFFF);
+                int y = (short)((lParam.ToInt64() >> 16) & 0xFFFF);
+                Point pt = PointFromScreen(new Point(x, y));
+                var pos = IslandBorder.TranslatePoint(new Point(0, 0), this);
+                var rect = new Rect(pos.X, pos.Y, IslandBorder.ActualWidth, IslandBorder.ActualHeight);
+                if (!rect.Contains(pt)) { handled = true; return new IntPtr(HTTRANSPARENT); }
+            }
+            if (msg == NativeMethods.WM_CLIPBOARDUPDATE)
+            {
+                try { _clipboard.OnClipboardChanged(); } catch (Exception ex) { Debug.WriteLine($"[Clipboard] {ex.Message}"); }
+                handled = true;
+            }
             return IntPtr.Zero;
         }
 
@@ -161,152 +232,125 @@ namespace DynamicIslandPC.Wpf
             {
                 if (_isUpdatingVolume) return;
                 _isUpdatingVolume = true;
-                try
-                {
-                    VolumeSlider.Value = vol;
-                    VolumeValueText.Text = $"{vol}%";
-                    OsdPercentText.Text = $"{vol}%";
-                    OsdProgress.Value = vol;
-                    ShowOSD();
-                }
+                try { VolumeSlider.Value = vol; VolumeValueText.Text = $"{vol}%"; UpdateOsdUi("Система", vol); ShowOSD(); }
                 finally { _isUpdatingVolume = false; }
             });
-            _audio.DevicesChanged += (s, e) => Dispatcher.Invoke(BuildDeviceList);
+            _audio.DevicesChanged += (s, e) => Dispatcher.Invoke(UpdateAudioButtons);
             _clipboard.HistoryChanged += (s, e) => Dispatcher.Invoke(() => { UpdateClipboardCount(); BuildClipboardList(); });
-            _layout.Changed += (s, data) => Dispatcher.Invoke(() =>
+            _layout.Changed += (s, d) => Dispatcher.Invoke(() =>
             {
-                LayoutText.Text = data.layout;
-                CapsText.Visibility = data.capsLock ? Visibility.Visible : Visibility.Collapsed;
+                LayoutText.Text = d.layout;
+                CapsBadge.Visibility = d.capsLock ? Visibility.Visible : Visibility.Collapsed;
             });
             _shelf.Changed += (s, e) => Dispatcher.Invoke(() => { UpdateShelfCount(); BuildShelfList(); });
-            _player.TrackChanged += (s, e) => Dispatcher.Invoke(() => { BuildPlaylist(); UpdatePlayerTrackUi(); });
-            _player.StateChanged += (s, e) => Dispatcher.Invoke(UpdatePlayerStateUi);
-            _systemMonitor.Updated += (s, data) => Dispatcher.Invoke(() => UpdateSystemUi(data));
+            _systemMonitor.Updated += (s, d) => Dispatcher.Invoke(() => UpdateSystemUi(d));
+            _appVolume.AppVolumeChanged += (name, vol, _) => Dispatcher.Invoke(() => { UpdateOsdUi(name, vol); ShowOSD(); });
         }
 
-        private void UpdateSystemUi((double CpuPercent, double RamPercent, double GpuPercent, ulong UsedRamMb, ulong TotalRamMb) data)
+        private void UpdateClock()
         {
-            CpuPercentText.Text = $"{data.CpuPercent:F1}%";
-            CpuProgressBar.Value = Math.Min(data.CpuPercent, 100);
-
-            RamPercentText.Text = $"{data.RamPercent:F1}%";
-            RamProgressBar.Value = Math.Min(data.RamPercent, 100);
-            RamText.Text = $"{data.UsedRamMb / 1024.0:F1} / {data.TotalRamMb / 1024.0:F1} ГБ";
-
-            GpuPercentText.Text = $"{data.GpuPercent:F1}%";
-            GpuProgressBar.Value = Math.Min(data.GpuPercent, 100);
-
-            UpdateIndicator(CpuIndicator, CpuIndicatorText, data.CpuPercent);
-            UpdateIndicator(RamIndicator, RamIndicatorText, data.RamPercent);
-            UpdateIndicator(GpuIndicator, GpuIndicatorText, data.GpuPercent);
+            var now = DateTime.Now;
+            ClockText.Text = now.ToString("HH:mm");
+            DateText.Text = now.ToString("dddd, d MMMM", new CultureInfo("ru-RU"));
         }
 
-        private void UpdateIndicator(Border indicator, TextBlock textBlock, double percent)
+        private void UpdateVpnUi(bool isConnected)
         {
-            textBlock.Text = $"{(int)percent}";
-
-            if (percent > 80)
+            VpnToggleBtn.ApplyTemplate();
+            var bg = VpnToggleBtn.Template.FindName("BtnBg", VpnToggleBtn) as Ellipse;
+            if (isConnected)
             {
-                indicator.Background = new SolidColorBrush(Color.FromRgb(239, 68, 68));
-                textBlock.Foreground = new SolidColorBrush(Color.FromRgb(255, 255, 255));
-            }
-            else if (percent > 50)
-            {
-                indicator.Background = new SolidColorBrush(Color.FromRgb(245, 158, 11));
-                textBlock.Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42));
+                if (bg != null) { bg.Fill = (Brush)FindResource("VpnOnGradient"); bg.Stroke = new SolidColorBrush(Color.FromRgb(52, 211, 153)); }
+                VpnIcon.Text = "\uE72E"; VpnIcon.Foreground = Brushes.White;
+                VpnStatusText.Text = "Вкл"; VpnStatusText.Foreground = Brushes.White;
+                VpnDetailsText.Text = "Соединение защищено";
+                StartPulseAnimation();
+                VpnIndicatorText.Visibility = Visibility.Visible;
             }
             else
             {
-                indicator.Background = new SolidColorBrush(Color.FromRgb(52, 211, 153));
-                textBlock.Foreground = new SolidColorBrush(Color.FromRgb(15, 23, 42));
+                if (bg != null) { bg.Fill = (Brush)FindResource("VpnOffGradient"); bg.Stroke = new SolidColorBrush(Color.FromArgb(51, 255, 255, 255)); }
+                VpnIcon.Text = "\uE7E8"; VpnIcon.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184));
+                VpnStatusText.Text = "Выкл"; VpnStatusText.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184));
+                VpnDetailsText.Text = "Нажми, чтобы защитить соединение";
+                StopPulseAnimation();
+                VpnIndicatorText.Visibility = Visibility.Collapsed;
             }
         }
 
-        private void UpdateActiveWindow()
+        private void StartPulseAnimation()
         {
-            string title = GetActiveWindowTitle();
-            ActiveWindowText.Text = string.IsNullOrWhiteSpace(title) || title == "Program Manager"
-                ? "Рабочий стол"
-                : (title.Length > 30 ? title.Substring(0, 27) + "..." : title);
+            Pulse(PulseRing1, 1.18, 0.7, 0);
+            Pulse(PulseRing2, 1.32, 0.5, 300);
         }
-
-        private string GetActiveWindowTitle()
+        private void Pulse(Ellipse ring, double scaleTo, double opacityFrom, double delayMs)
         {
-            IntPtr hwnd = GetForegroundWindow();
-            System.Text.StringBuilder buff = new System.Text.StringBuilder(256);
-            return GetWindowText(hwnd, buff, 256) > 0 ? buff.ToString() : "";
+            if (ring.RenderTransform is not ScaleTransform st) { st = new ScaleTransform(1, 1); ring.RenderTransform = st; }
+            var dur = TimeSpan.FromSeconds(2.2);
+            var grow = new DoubleAnimation(0.82, scaleTo, dur) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = EaseOut(), BeginTime = TimeSpan.FromMilliseconds(delayMs) };
+            var fade = new DoubleAnimation(opacityFrom, 0, dur) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = EaseIn(), BeginTime = TimeSpan.FromMilliseconds(delayMs) };
+            st.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+            st.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+            ring.BeginAnimation(OpacityProperty, fade);
         }
-
-        private void SelectTab(TabType tab)
+        private void StopPulseAnimation()
         {
-            _activeTab = tab;
-            foreach (var kv in _tabs)
+            foreach (var r in new[] { PulseRing1, PulseRing2 })
             {
-                bool active = kv.Key == tab;
-                kv.Value.panel.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-                kv.Value.btn.Foreground = active ? new SolidColorBrush(Color.FromRgb(226, 232, 240)) : new SolidColorBrush(Color.FromRgb(148, 163, 184));
-                kv.Value.btn.Background = active ? new SolidColorBrush(Color.FromArgb(20, 34, 211, 238)) : Brushes.Transparent;
+                r.BeginAnimation(OpacityProperty, null); r.Opacity = 0;
+                if (r.RenderTransform is ScaleTransform st) { st.BeginAnimation(ScaleTransform.ScaleXProperty, null); st.BeginAnimation(ScaleTransform.ScaleYProperty, null); }
             }
-            var target = _tabs[tab].panel;
-            target.Opacity = 0;
-            target.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
 
-        private void SoundTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Sound);
-        private void ShelfTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Shelf);
-        private void ClipboardTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Clipboard);
-        private void PlayerTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Player);
-        private void SystemTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.System);
-
-        private void SwitchTabRelative(int dir)
+        private async void VpnToggleBtn_Click(object sender, RoutedEventArgs e)
         {
-            var order = new[] { TabType.Sound, TabType.Shelf, TabType.Clipboard, TabType.Player, TabType.System };
-            int i = Array.IndexOf(order, _activeTab) + dir;
-            if (i < 0) i = order.Length - 1;
-            if (i >= order.Length) i = 0;
-            SelectTab(order[i]);
+            _isVpnToggling = true;
+            VpnToggleBtn.IsEnabled = false;
+            VpnIcon.Text = "\uE895"; VpnStatusText.Text = "Связь…";
+            try { await _vpnService.ToggleAsync(); } catch (Exception ex) { Debug.WriteLine($"[VPN] {ex.Message}"); }
+            await Task.Delay(450);
+            VpnToggleBtn.IsEnabled = true;
+            _isVpnToggling = false;
         }
 
-        private void TabContent_PreviewDown(object sender, MouseButtonEventArgs e)
+        private bool IsFullScreenApp()
         {
-            _swipeMoved = false;
-            if (IsInteractiveOrigin(e.OriginalSource as DependencyObject)) { _swipeArmed = false; return; }
-            _swipeArmed = true;
-            _swipeStartX = e.GetPosition(TabContentGrid).X;
-        }
-
-        private void TabContent_PreviewMove(object sender, MouseEventArgs e)
-        {
-            if (!_swipeArmed || e.LeftButton != MouseButtonState.Pressed) return;
-            if (Math.Abs(e.GetPosition(TabContentGrid).X - _swipeStartX) > SWIPE_THRESHOLD) _swipeMoved = true;
-        }
-
-        private void TabContent_PreviewUp(object sender, MouseButtonEventArgs e)
-        {
-            if (!_swipeArmed) return;
-            _swipeArmed = false;
-            double dx = e.GetPosition(TabContentGrid).X - _swipeStartX;
-            if (_swipeMoved && Math.Abs(dx) >= SWIPE_THRESHOLD) SwitchTabRelative(dx < 0 ? +1 : -1);
-        }
-
-        private bool IsInteractiveOrigin(DependencyObject? d)
-        {
-            while (d != null && !ReferenceEquals(d, TabContentGrid))
-            {
-                if (d is Slider || d is ButtonBase) return true;
-                d = VisualTreeHelper.GetParent(d);
-            }
-            return false;
+            IntPtr h = GetForegroundWindow();
+            if (h == IntPtr.Zero || h == _hwnd) return false;
+            if (!GetWindowRect(h, out RECT r)) return false;
+            return r.Left <= 0 && r.Top <= 0 && r.Right >= (int)SystemParameters.PrimaryScreenWidth && r.Bottom >= (int)SystemParameters.PrimaryScreenHeight;
         }
 
         private void CheckHover()
         {
-            if (_isAnimating) return;
+            if (_isAnimating || _isDraggingOut || _isVpnToggling) return;
+            if (IslandBorder.ContextMenu?.IsOpen == true) return;
+            if (_isExpanded && Mouse.Captured != null) return;
+
+            bool wasFull = _isFullScreen;
+            _isFullScreen = IsFullScreenApp();
+
             NativeMethods.GetCursorPos(out var cur);
-            NativeMethods.GetWindowRect(_hwnd, out var r);
-            bool inside = cur.X >= r.Left && cur.X <= r.Right && cur.Y >= r.Top && cur.Y <= r.Bottom;
+            var pos = IslandBorder.PointToScreen(new Point(0, 0));
+            int buffer = _isFullScreen && !_isExpanded ? 10 : 0;
+            bool inside = cur.X >= pos.X - buffer && cur.X <= pos.X + IslandBorder.ActualWidth + buffer &&
+                          cur.Y >= pos.Y - buffer && cur.Y <= pos.Y + IslandBorder.ActualHeight + buffer;
+
             if (inside && !_isExpanded) ToggleExpand();
             else if (!inside && _isExpanded) ToggleExpand();
+            else if (wasFull != _isFullScreen && !_isExpanded && !_isAnimating) ApplyCollapsedVisual();
+        }
+
+        private void ApplyCollapsedVisual()
+        {
+            if (_isExpanded) return;
+            int tw = _isFullScreen ? DOT_WIDTH : COLLAPSED_WIDTH;
+            int th = _isFullScreen ? DOT_HEIGHT : COLLAPSED_HEIGHT;
+            Anim(IslandBorder, WidthProperty, tw, 300, EaseOut());
+            Anim(IslandBorder, HeightProperty, th, 300, EaseOut());
+            IslandBorder.CornerRadius = new CornerRadius(_isFullScreen ? 11 : 24);
+            TopPanel.Visibility = _isFullScreen || _osdShown ? Visibility.Collapsed : Visibility.Visible;
+            if (_isFullScreen) { TabBar.Visibility = Visibility.Collapsed; TabContentGrid.Visibility = Visibility.Collapsed; }
         }
 
         private void ToggleExpand()
@@ -314,198 +358,253 @@ namespace DynamicIslandPC.Wpf
             if (_isAnimating) return;
             _isAnimating = true;
             _isExpanded = !_isExpanded;
-            _osdHideTimer.Stop();
-            HideOSD();
 
-            var dur = TimeSpan.FromMilliseconds(ANIM_MS);
-            var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 };
-            int tw = _isExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
-            int th = _isExpanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT;
+            int tw = _isExpanded ? EXPANDED_WIDTH : (_isFullScreen ? DOT_WIDTH : COLLAPSED_WIDTH);
+            int th = _isExpanded ? EXPANDED_HEIGHT : (_isFullScreen ? DOT_HEIGHT : COLLAPSED_HEIGHT);
 
-            var wA = new DoubleAnimation(tw, dur) { EasingFunction = ease };
-            var hA = new DoubleAnimation(th, dur) { EasingFunction = ease };
-            var lA = new DoubleAnimation((SystemParameters.WorkArea.Width - tw) / 2, dur) { EasingFunction = ease };
-            hA.Completed += (s, e) => _isAnimating = false;
-
-            BeginAnimation(WidthProperty, wA);
-            BeginAnimation(HeightProperty, hA);
-            BeginAnimation(LeftProperty, lA);
+            Anim(IslandBorder, WidthProperty, tw, 430, Spring(), done: (s, e) => _isAnimating = false);
+            Anim(IslandBorder, HeightProperty, th, 430, Spring());
 
             if (_isExpanded)
             {
-                ExpandedGrid.Visibility = Visibility.Visible;
-                ExpandedGrid.Opacity = 0;
-                ExpandedGrid.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(300)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                IslandBorder.CornerRadius = new CornerRadius(26);
+                var tb = EnsureTranslate(TabBar); var tc = EnsureTranslate(TabContentGrid);
+
+                TabBar.BeginAnimation(OpacityProperty, null);
+                TabContentGrid.BeginAnimation(OpacityProperty, null);
+                TabBar.Visibility = Visibility.Visible; TabContentGrid.Visibility = Visibility.Visible;
+                TabBar.Opacity = 0; TabContentGrid.Opacity = 0; tb.Y = 10; tc.Y = 14;
+
+                Anim(TabBar, OpacityProperty, 1, 220, EaseOut(), 60);
+                Anim(TabContentGrid, OpacityProperty, 1, 260, EaseOut(), 90);
+                Anim(tb, TranslateTransform.YProperty, 0, 430, Spring(), 60);
+                Anim(tc, TranslateTransform.YProperty, 0, 470, Spring(), 90);
+
+                TopPanel.Visibility = _osdShown ? Visibility.Collapsed : Visibility.Visible;
+                DatePanel.Visibility = Visibility.Visible;
+                Anim(TopPanel, HeightProperty, 78, 430, Spring());
+                Anim(ClockViewbox, HeightProperty, 46, 430, Spring());
+                Anim(DatePanel, OpacityProperty, 1, 260, EaseOut(), 80);
+                Anim(CountersPanel, OpacityProperty, 0, 120, EaseOut());
+                foreach (var vb in new[] { CpuViewbox, RamViewbox, GpuViewbox })
+                { Anim(vb, WidthProperty, 46, 430, Spring()); Anim(vb, HeightProperty, 46, 430, Spring()); }
+                UpdateAudioButtons();
+                UpdateTabPillWidth();
             }
             else
             {
-                ExpandedGrid.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } });
+                IslandBorder.CornerRadius = new CornerRadius(_isFullScreen ? 11 : 24);
+                Anim(TabBar, OpacityProperty, 0, 140, EaseIn());
+                Anim(TabContentGrid, OpacityProperty, 0, 140, EaseIn(), done: (s, e) =>
+                {
+                    if (!_isExpanded) { TabContentGrid.Visibility = Visibility.Collapsed; TabBar.Visibility = Visibility.Collapsed; }
+                });
+
+                if (_isFullScreen) TopPanel.Visibility = Visibility.Collapsed;
+                else
+                {
+                    TopPanel.Visibility = _osdShown ? Visibility.Collapsed : Visibility.Visible;
+                    Anim(TopPanel, HeightProperty, 48, 430, Spring());
+                    Anim(ClockViewbox, HeightProperty, 30, 430, Spring());
+                    Anim(DatePanel, OpacityProperty, 0, 120, EaseIn(), done: (s, e) => { if (!_isExpanded) DatePanel.Visibility = Visibility.Collapsed; });
+                    Anim(CountersPanel, OpacityProperty, 1, 260, EaseOut(), 80);
+                    foreach (var vb in new[] { CpuViewbox, RamViewbox, GpuViewbox })
+                    { Anim(vb, WidthProperty, 24, 430, Spring()); Anim(vb, HeightProperty, 24, 430, Spring()); }
+                }
+            }
+
+            if (_osdShown)
+            {
+                bool dot = !_isExpanded && _isFullScreen;
+                SmallOsd.Visibility = _isExpanded || dot ? Visibility.Collapsed : Visibility.Visible;
+                LargeOsd.Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
-        private void Window_DragOver(object sender, DragEventArgs e) { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
-        private void Window_Drop(object sender, DragEventArgs e)
+        private void TabGrid_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateTabPillWidth();
+
+        private void UpdateTabPillWidth()
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] files) _shelf.AddFiles(files);
-            e.Handled = true;
-        }
-        private void Player_DragOver(object sender, DragEventArgs e) { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
-        private void Player_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] files) _player.AddTracks(files);
-            e.Handled = true;
+            if (TabGrid.ActualWidth == 0) return;
+            TabPill.Width = TabGrid.ActualWidth / 4.0;
+            TabPill.Height = Math.Max(0, TabGrid.ActualHeight - 4);
+            int index = Array.IndexOf(TabOrder, _activeTab);
+            ((TranslateTransform)TabPill.RenderTransform).X = index * TabPill.Width;
         }
 
+        private void SelectTab(TabType tab)
+        {
+            if (_activeTab == tab && _tabs[tab].panel.Visibility == Visibility.Visible) return;
+            int oldIndex = Array.IndexOf(TabOrder, _activeTab);
+            int newIndex = Array.IndexOf(TabOrder, tab);
+            int dir = newIndex >= oldIndex ? 1 : -1;
+
+            Anim((TranslateTransform)TabPill.RenderTransform, TranslateTransform.XProperty, newIndex * TabPill.Width, 380, Spring());
+
+            var oldPanel = _tabs[_activeTab].panel;
+            var newPanel = _tabs[tab].panel;
+            _activeTab = tab;
+
+            Color accent = tab switch
+            {
+                TabType.Sound => Color.FromRgb(34, 211, 238),
+                TabType.Clipboard => Color.FromRgb(167, 139, 250),
+                TabType.Shelf => Color.FromRgb(245, 158, 11),
+                TabType.Vpn => Color.FromRgb(52, 211, 153),
+                _ => Colors.White
+            };
+            Resources["AccentColor"] = new SolidColorBrush(accent);
+            Resources["AccentGlow"] = new SolidColorBrush(Color.FromArgb(40, accent.R, accent.G, accent.B));
+            Resources["AccentColorValue"] = accent;
+
+            foreach (var kv in _tabs)
+                kv.Value.btn.Foreground = kv.Key == tab ? Brushes.White : new SolidColorBrush(Color.FromRgb(148, 163, 184));
+            UpdateAudioButtons();
+
+            if (oldPanel.Visibility == Visibility.Collapsed && newPanel.Visibility == Visibility.Collapsed)
+            { newPanel.Visibility = Visibility.Visible; newPanel.Opacity = 1; return; }
+
+            var oldT = new TranslateTransform(); oldPanel.RenderTransform = oldT;
+            var newT = new TranslateTransform { X = 26 * dir }; newPanel.RenderTransform = newT;
+            var oldOp = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(160)) { EasingFunction = EaseIn() };
+            oldOp.Completed += (s, e) => { if (!ReferenceEquals(_tabs[_activeTab].panel, oldPanel)) { oldPanel.Visibility = Visibility.Collapsed; oldPanel.RenderTransform = null; } };
+            newPanel.Visibility = Visibility.Visible;
+            Anim(oldT, TranslateTransform.XProperty, -26 * dir, 220, EaseOut());
+            oldPanel.BeginAnimation(OpacityProperty, oldOp);
+            Anim(newT, TranslateTransform.XProperty, 0, 360, Spring());
+            Anim(newPanel, OpacityProperty, 1, 240, EaseOut(), 40);
+        }
+
+        private void SoundTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Sound);
+        private void ClipboardTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Clipboard);
+        private void ShelfTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Shelf);
+        private void VpnTab_Click(object sender, RoutedEventArgs e) => SelectTab(TabType.Vpn);
+
+        private void SwitchTabRelative(int dir)
+        {
+            int i = Array.IndexOf(TabOrder, _activeTab) + dir;
+            if (i < 0) i = TabOrder.Length - 1;
+            if (i >= TabOrder.Length) i = 0;
+            SelectTab(TabOrder[i]);
+        }
+
+        private void TabContent_PreviewDown(object sender, MouseButtonEventArgs e)
+        {
+            _swipeMoved = false;
+            if (IsInteractiveOrigin(e.OriginalSource as DependencyObject)) { _swipeArmed = false; return; }
+            _swipeArmed = true; _swipeStartX = e.GetPosition(TabContentGrid).X;
+            TabContentGrid.CaptureMouse();
+        }
+        private void TabContent_PreviewMove(object sender, MouseEventArgs e)
+        {
+            if (!_swipeArmed || e.LeftButton != MouseButtonState.Pressed) return;
+            if (Math.Abs(e.GetPosition(TabContentGrid).X - _swipeStartX) > SWIPE_THRESHOLD) _swipeMoved = true;
+        }
+        private void TabContent_PreviewUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_swipeArmed) return;
+            _swipeArmed = false; TabContentGrid.ReleaseMouseCapture();
+            double dx = e.GetPosition(TabContentGrid).X - _swipeStartX;
+            if (_swipeMoved && Math.Abs(dx) >= SWIPE_THRESHOLD) SwitchTabRelative(dx < 0 ? 1 : -1);
+        }
+        private bool IsInteractiveOrigin(DependencyObject? d)
+        {
+            while (d != null && !ReferenceEquals(d, TabContentGrid))
+            {
+                if (d is Slider || d is ButtonBase || d == ShelfStack || d == ClipboardStack) return true;
+                d = VisualTreeHelper.GetParent(d);
+            }
+            return false;
+        }
+
+        private void Window_DragOver(object sender, DragEventArgs e)
+        { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] files)
+            { _shelf.AddFiles(files); if (_isExpanded) SelectTab(TabType.Shelf); }
+            e.Handled = true;
+        }
         private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_isUpdatingVolume) return;
             _isUpdatingVolume = true;
-            try
-            {
-                _audio.SetVolume((int)e.NewValue);
-                VolumeValueText.Text = $"{(int)e.NewValue}%";
-                OsdPercentText.Text = $"{(int)e.NewValue}%";
-                OsdProgress.Value = e.NewValue;
-                ShowOSD();
-            }
+            try { _audio.SetVolume((int)e.NewValue); VolumeValueText.Text = $"{(int)e.NewValue}%"; UpdateOsdUi("Система", (int)e.NewValue); ShowOSD(); }
             finally { _isUpdatingVolume = false; }
         }
+        private async void PlayPause_Click(object sender, RoutedEventArgs e) { try { await _mediaSession.TogglePlayPauseAsync(); } catch { } }
+        private async void Prev_Click(object sender, RoutedEventArgs e) { try { await _mediaSession.PrevAsync(); } catch { } }
+        private async void Next_Click(object sender, RoutedEventArgs e) { try { await _mediaSession.NextAsync(); } catch { } }
+        private void OsdGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        { try { Process.Start(new ProcessStartInfo("sndvol.exe") { UseShellExecute = true }); } catch { } e.Handled = true; }
 
-        private void PlayPause_Click(object sender, RoutedEventArgs e) => _player.TogglePlayPause();
-        private void Prev_Click(object sender, RoutedEventArgs e) => _player.Prev();
-        private void Next_Click(object sender, RoutedEventArgs e) => _player.Next();
-        private void Shuffle_Click(object sender, RoutedEventArgs e) { _player.Shuffle = !_player.Shuffle; UpdatePlayerStateUi(); }
-        private void Repeat_Click(object sender, RoutedEventArgs e)
+        private void UpdateSystemUi((double CpuPercent, double RamPercent, double GpuPercent, ulong UsedRamMb, ulong TotalRamMb) d)
         {
-            _player.Repeat = _player.Repeat switch { RepeatMode.Off => RepeatMode.All, RepeatMode.All => RepeatMode.One, _ => RepeatMode.Off };
-            UpdatePlayerStateUi();
+            BigCpuValue.Text = $"{(int)d.CpuPercent}";
+            BigRamValue.Text = $"{(int)d.RamPercent}";
+            BigGpuValue.Text = $"{(int)d.GpuPercent}";
+            SetRingValue(CpuRing, d.CpuPercent);
+            SetRingValue(RamRing, d.RamPercent);
+            SetRingValue(GpuRing, d.GpuPercent);
         }
-        private void PlayerVolSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { _player.Volume = (float)(e.NewValue / 100.0); PlayerVolText.Text = $"{(int)e.NewValue}%"; }
-        private void PlayerSeekSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void SetRingValue(Ellipse ring, double percent)
         {
-            if (_isUpdatingSeek) return;
-            var d = _player.Duration;
-            if (d <= TimeSpan.Zero) return;
-            _player.Seek(TimeSpan.FromSeconds(e.NewValue));
+            double dash = 2 * Math.PI * 24 / 4;
+            double target = (1 - Math.Clamp(percent, 0, 100) / 100.0) * dash;
+            Anim(ring, Shape.StrokeDashOffsetProperty, target, 520, EaseOut());
         }
-        private void UpdatePlayerPosition()
-        {
-            var pos = _player.Position; var dur = _player.Duration;
-            PlayerPosText.Text = Fmt(pos); PlayerDurText.Text = Fmt(dur);
-            _isUpdatingSeek = true;
-            PlayerSeekSlider.Maximum = dur.TotalSeconds > 0 ? dur.TotalSeconds : 100;
-            PlayerSeekSlider.Value = Math.Min(pos.TotalSeconds, PlayerSeekSlider.Maximum);
-            _isUpdatingSeek = false;
-        }
-        private void UpdatePlayerTrackUi()
-        {
-            var track = _player.CurrentTrack;
-            if (track == null) { PlayerTitleText.Text = "Нет трека"; PlayerArtistText.Text = "Брось mp3/wav сюда"; PlayerCoverText.Text = "\uD83C\uDFB5"; }
-            else { PlayerTitleText.Text = IOPath.GetFileNameWithoutExtension(track); PlayerArtistText.Text = "Локальный файл"; PlayerCoverText.Text = "\uD83C\uDFB5"; }
-            UpdatePlayerPosition();
-        }
-        private void UpdatePlayerStateUi()
-        {
-            PlayPauseBtn.Content = _player.IsPlaying ? "\u23F8" : "\u25B6";
-            ShuffleBtn.Foreground = _player.Shuffle ? new SolidColorBrush(Color.FromRgb(34, 211, 238)) : new SolidColorBrush(Color.FromRgb(148, 163, 184));
-            RepeatBtn.Foreground = _player.Repeat switch { RepeatMode.All => new SolidColorBrush(Color.FromRgb(34, 211, 238)), RepeatMode.One => new SolidColorBrush(Color.FromRgb(245, 158, 11)), _ => new SolidColorBrush(Color.FromRgb(148, 163, 184)) };
-            RepeatBtn.Content = _player.Repeat == RepeatMode.One ? "\uD83D\uDD01" : "\uD83D\uDD02";
-        }
-        private static string Fmt(TimeSpan t) => t.TotalSeconds < 0 ? "0:00" : $"{(int)t.TotalMinutes}:{t.Seconds:D2}";
 
-        private void BuildDeviceList()
+        private void UpdateAudioButtons()
         {
-            DevicesStack.Children.Clear();
-            string activeId = _audio.ActiveDeviceId ?? "";
+            var activeId = _audio.ActiveDeviceId;
+            var dev = _audio.Devices;
+            var accent = (SolidColorBrush)Resources["AccentColor"];
+            var glow = (SolidColorBrush)Resources["AccentGlow"];
+            var surface = (SolidColorBrush)FindResource("Surface");
+            var stroke = (SolidColorBrush)FindResource("Stroke");
 
-            foreach (var device in _audio.Devices)
+            void Set(Button b, int i)
             {
-                bool isActive = device.ID == activeId;
-
-                var card = new Border
-                {
-                    CornerRadius = new CornerRadius(16),
-                    Padding = new Thickness(16, 12, 16, 12),
-                    Margin = new Thickness(0, 0, 0, 12),
-                    Cursor = Cursors.Hand
-                };
-
-                if (isActive)
-                {
-                    card.Background = new SolidColorBrush(Color.FromRgb(30, 41, 59));
-                    card.BorderBrush = new SolidColorBrush(Color.FromArgb(179, 34, 211, 238));
-                    card.BorderThickness = new Thickness(1.5);
-                }
-                else
-                {
-                    card.Background = new SolidColorBrush(Color.FromRgb(15, 23, 42));
-                    card.BorderBrush = new SolidColorBrush(Color.FromArgb(20, 255, 255, 255));
-                    card.BorderThickness = new Thickness(0.5);
-                }
-
-                var grid = new Grid();
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                info.Children.Add(new TextBlock
-                {
-                    Text = DeviceName(device.FriendlyName),
-                    FontSize = 14,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = isActive ? new SolidColorBrush(Color.FromRgb(226, 232, 240)) : new SolidColorBrush(Color.FromRgb(203, 213, 225))
-                });
-                info.Children.Add(new TextBlock
-                {
-                    Text = $"{_audio.CurrentVolume}% \u2022 {(isActive ? "default" : "inactive")}",
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)),
-                    Margin = new Thickness(0, 2, 0, 0)
-                });
-                Grid.SetColumn(info, 0);
-                grid.Children.Add(info);
-
-                if (isActive)
-                {
-                    var swapBtn = new Button
-                    {
-                        Content = "Swap",
-                        Style = (Style)FindResource("SwapButton"),
-                        VerticalAlignment = VerticalAlignment.Center
-                    };
-                    swapBtn.Click += async (s, e) =>
-                    {
-                        var inactiveDevice = _audio.Devices.FirstOrDefault(d => d.ID != activeId);
-                        if (inactiveDevice != null)
-                        {
-                            _audio.SwitchDevice(inactiveDevice.ID);
-                            await Task.Delay(400);
-                            BuildDeviceList();
-                        }
-                    };
-                    Grid.SetColumn(swapBtn, 1);
-                    grid.Children.Add(swapBtn);
-                }
-                else
-                {
-                    card.MouseLeftButtonUp += async (s, e) =>
-                    {
-                        _audio.SwitchDevice(device.ID);
-                        await Task.Delay(400);
-                        BuildDeviceList();
-                    };
-                }
-
-                card.Child = grid;
-                DevicesStack.Children.Add(card);
+                bool active = dev[i].ID == activeId;
+                bool head = dev[i].FriendlyName.Contains("Head", StringComparison.OrdinalIgnoreCase) || dev[i].FriendlyName.Contains("Науш", StringComparison.OrdinalIgnoreCase);
+                b.Content = CreatePillContent(head ? "\uE7F6" : "\uE7F5", dev[i].FriendlyName);
+                b.Background = active ? glow : surface;
+                b.BorderBrush = active ? accent : stroke;
+                b.Foreground = active ? accent : Brushes.White;
+                b.IsEnabled = true;
             }
+            if (dev.Count > 0) Set(BtnAudioSpeakers, 0);
+            else { BtnAudioSpeakers.IsEnabled = false; BtnAudioSpeakers.Content = CreatePillContent("\uE74F", "Нет устройств"); BtnAudioSpeakers.Background = surface; BtnAudioSpeakers.BorderBrush = stroke; BtnAudioSpeakers.Foreground = Brushes.White; }
+            if (dev.Count > 1) { BtnAudioHeadphones.Visibility = Visibility.Visible; Set(BtnAudioHeadphones, 1); }
+            else BtnAudioHeadphones.Visibility = Visibility.Collapsed;
         }
 
-        private static string DeviceName(string name)
+        private StackPanel CreatePillContent(string glyph, string text)
         {
-            int p = name.IndexOf('(');
-            return p > 0 ? name.Substring(0, p).Trim() : name;
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, ClipToBounds = true };
+            var ic = new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            var tx = new TextBlock { Text = text, FontSize = 12, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 92 };
+            var bind = new Binding("Foreground") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Button), 1) };
+            ic.SetBinding(TextBlock.ForegroundProperty, bind);
+            tx.SetBinding(TextBlock.ForegroundProperty, bind);
+            sp.Children.Add(ic); sp.Children.Add(tx);
+            return sp;
         }
+        private void BtnAudioSpeakers_Click(object sender, RoutedEventArgs e) { if (_audio.Devices.Count > 0) _audio.SwitchDevice(_audio.Devices[0].ID); }
+        private void BtnAudioHeadphones_Click(object sender, RoutedEventArgs e) { if (_audio.Devices.Count > 1) _audio.SwitchDevice(_audio.Devices[1].ID); }
+
+        private static (string glyph, Color color) FileGlyph(string ext) => ext.ToUpperInvariant().TrimStart('.') switch
+        {
+            "PDF" or "DOC" or "DOCX" or "TXT" or "MD" or "RTF" => ("\uE8A5", Color.FromRgb(96, 165, 250)),
+            "XLS" or "XLSX" or "CSV" => ("\uE80A", Color.FromRgb(52, 211, 153)),
+            "JPG" or "JPEG" or "PNG" or "GIF" or "WEBP" or "BMP" or "SVG" => ("\uEB9F", Color.FromRgb(167, 139, 250)),
+            "MP3" or "WAV" or "FLAC" or "OGG" or "M4A" => ("\uE8D6", Color.FromRgb(34, 211, 238)),
+            "MP4" or "AVI" or "MKV" or "MOV" or "WEBM" => ("\uE8B2", Color.FromRgb(244, 114, 182)),
+            "ZIP" or "RAR" or "7Z" or "TAR" or "GZ" => ("\uE8B7", Color.FromRgb(245, 158, 11)),
+            "CS" or "CPP" or "PY" or "JS" or "TS" or "JSON" or "XML" or "HTML" or "CSS" => ("\uE943", Color.FromRgb(52, 211, 153)),
+            "EXE" or "MSI" or "BAT" or "PS1" => ("\uE713", Color.FromRgb(148, 163, 184)),
+            _ => ("\uE7C3", Color.FromRgb(148, 163, 184))
+        };
 
         private void BuildShelfList()
         {
@@ -513,16 +612,30 @@ namespace DynamicIslandPC.Wpf
             if (_shelf.Files.Count == 0) { ShelfStack.Children.Add(EmptyHint("Перетащи файлы сюда")); return; }
             foreach (string file in _shelf.Files)
             {
-                string fileName = IOPath.GetFileName(file); string ext = IOPath.GetExtension(file);
-                var grid = RowShell();
-                grid.Children.Add(CenterIcon(ShelfService.GetFileIcon(ext)));
+                string fileName = IOPath.GetFileName(file);
+                var (glyph, color) = FileGlyph(IOPath.GetExtension(file));
+                var grid = RowShell(48);
+                grid.PreviewMouseLeftButtonDown += (s, e) => _dragStartPoint = e.GetPosition(null);
+                grid.MouseMove += (s, e) =>
+                {
+                    if (e.LeftButton == MouseButtonState.Pressed && !_isDraggingOut)
+                    {
+                        Vector diff = _dragStartPoint - e.GetPosition(null);
+                        if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance || Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                        {
+                            _isDraggingOut = true;
+                            try { DragDrop.DoDragDrop(grid, new DataObject(DataFormats.FileDrop, new[] { file }), DragDropEffects.Copy); }
+                            finally { _isDraggingOut = false; }
+                        }
+                    }
+                };
+                grid.Children.Add(IconChip(glyph, color));
                 grid.Children.Add(RowText(fileName, 1));
                 var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
                 Grid.SetColumn(actions, 2);
-                actions.Children.Add(IconBtn("\u25B6", () => ShelfService.Open(file)));
-                actions.Children.Add(IconBtn("\uD83D\uDCC2", () => ShelfService.OpenFolder(file)));
-                actions.Children.Add(IconBtn("\uD83D\uDCCB", () => ShelfService.CopyToClipboard(file)));
-                actions.Children.Add(IconBtn("\u2715", () => _shelf.Remove(file), Color.FromRgb(248, 113, 113)));
+                actions.Children.Add(IconBtn("\uE76C", () => ShelfService.Open(file)));
+                actions.Children.Add(IconBtn("\uE838", () => ShelfService.OpenFolder(file)));
+                actions.Children.Add(IconBtn("\uE711", () => _shelf.Remove(file), Color.FromRgb(239, 68, 68)));
                 grid.Children.Add(actions);
                 ShelfStack.Children.Add(grid);
             }
@@ -534,129 +647,136 @@ namespace DynamicIslandPC.Wpf
             if (_clipboard.History.Count == 0) { ClipboardStack.Children.Add(EmptyHint("Скопируй что-нибудь")); return; }
             foreach (var item in _clipboard.History)
             {
-                var grid = RowShell(44);
+                var grid = RowShell(48);
+                grid.Cursor = Cursors.Hand;
                 if (item.Type == ClipboardItemType.Color && item.Color.HasValue)
-                    grid.Children.Add(new Border { Background = new SolidColorBrush(item.Color.Value), Width = 22, Height = 22, CornerRadius = new CornerRadius(5), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center });
+                    grid.Children.Add(new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(10), Background = new SolidColorBrush(item.Color.Value), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center });
                 else if (item.Type == ClipboardItemType.Image && item.Image != null)
-                    grid.Children.Add(new Image { Source = item.Image, Width = 28, Height = 28, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center });
-                else grid.Children.Add(CenterIcon(item.Type == ClipboardItemType.Text ? "\uD83D\uDCDD" : "\uD83D\uDCCB"));
+                    grid.Children.Add(new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(10), Background = new SolidColorBrush(Color.FromRgb(38, 51, 74)), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, Child = new Image { Source = item.Image, Stretch = Stretch.UniformToFill } });
+                else grid.Children.Add(IconChip(item.Type == ClipboardItemType.Text ? "\uE8C8" : "\uE77F", Color.FromRgb(167, 139, 250)));
+
                 grid.Children.Add(RowText(item.DisplayText, 1));
-                var paste = IconBtn("\uD83D\uDCCB", () => RestoreClipboardItem(item));
-                Grid.SetColumn(paste, 2); paste.VerticalAlignment = VerticalAlignment.Center; paste.Margin = new Thickness(0, 0, 4, 0);
+                Button paste = null!;
+                Action restore = () => { _clipboard.RestoreItem(item); FlashRestoreFeedback(paste); };
+                paste = IconBtn("\uE77F", restore);
+                Grid.SetColumn(paste, 2); paste.VerticalAlignment = VerticalAlignment.Center; paste.Margin = new Thickness(0, 0, 6, 0);
                 grid.Children.Add(paste);
-                grid.MouseLeftButtonUp += (s, e) => { if (!_swipeMoved) RestoreClipboardItem(item); };
+                grid.MouseLeftButtonUp += (s, e) => { if (!_swipeMoved) restore(); };
                 ClipboardStack.Children.Add(grid);
             }
         }
 
-        private void BuildPlaylist()
+        private void FlashRestoreFeedback(Button btn)
         {
-            PlaylistStack.Children.Clear();
-            if (_player.Playlist.Count == 0) { PlaylistStack.Children.Add(EmptyHint("Брось mp3/wav сюда")); return; }
-            for (int i = 0; i < _player.Playlist.Count; i++)
-            {
-                int idx = i; bool cur = i == _player.CurrentIndex;
-                var grid = RowShell(36);
-                grid.Background = cur ? new SolidColorBrush(Color.FromArgb(30, 34, 211, 238)) : new SolidColorBrush(Color.FromArgb(12, 255, 255, 255));
-                var num = new TextBlock { Text = cur && _player.IsPlaying ? "\u25B6" : (idx + 1).ToString(), FontSize = 11, Foreground = cur ? new SolidColorBrush(Color.FromRgb(34, 211, 238)) : new SolidColorBrush(Color.FromRgb(148, 163, 184)), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-                Grid.SetColumn(num, 0); grid.Children.Add(num);
-                var title = new TextBlock { Text = IOPath.GetFileNameWithoutExtension(_player.Playlist[idx]), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(226, 232, 240)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0), TextTrimming = TextTrimming.CharacterEllipsis };
-                Grid.SetColumn(title, 1); grid.Children.Add(title);
-                var del = IconBtn("\u2715", () => _player.RemoveAt(idx), Color.FromRgb(248, 113, 113));
-                Grid.SetColumn(del, 2); del.VerticalAlignment = VerticalAlignment.Center; del.Margin = new Thickness(0, 0, 4, 0);
-                grid.Children.Add(del);
-                grid.MouseLeftButtonUp += (s, e) => { if (!_swipeMoved) _player.LoadAndPlay(idx); };
-                PlaylistStack.Children.Add(grid);
-            }
-        }
-
-        private void RestoreClipboardItem(ClipboardItem item)
-        {
-            _clipboard.RestoreItem(item);
-            string o = ClipboardCountText.Text; var oc = ClipboardCountText.Foreground;
-            ClipboardCountText.Text = "\u2713 Готово"; ClipboardCountText.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
-            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
-            t.Tick += (s, e) => { ClipboardCountText.Text = o; ClipboardCountText.Foreground = oc; t.Stop(); };
+            if (btn.Tag is DispatcherTimer old) old.Stop();
+            btn.Content = "\uE73E"; btn.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
+            var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+            btn.Tag = t;
+            t.Tick += (s, e) => { t.Stop(); btn.Tag = null; btn.Content = "\uE77F"; btn.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)); };
             t.Start();
         }
+
         private void ClearClipboard_Click(object sender, RoutedEventArgs e) => _clipboard.Clear();
+        private void MenuClearClipboard_Click(object sender, RoutedEventArgs e) => _clipboard.Clear();
+        private void MenuClearShelf_Click(object sender, RoutedEventArgs e) => _shelf.Clear();
+        private void MenuExit_Click(object sender, RoutedEventArgs e) => Application.Current.Shutdown();
+
+        private void UpdateOsdUi(string appName, int volume)
+        {
+            string g = volume == 0 ? "\uE74F" : "\uE767";
+            SmallOsdIcon.Text = g; LargeOsdIcon.Text = g;
+            SmallOsdAppName.Text = appName; LargeOsdAppName.Text = appName;
+            SmallOsdPercentText.Text = $"{volume}%"; LargeOsdPercentText.Text = $"{volume}%";
+            Anim(SmallOsdProgress, ProgressBar.ValueProperty, volume, 220, EaseOut());
+            Anim(LargeOsdProgress, ProgressBar.ValueProperty, volume, 220, EaseOut());
+        }
 
         private void ShowOSD()
         {
-            _osdHideTimer.Stop();
+            if (!_isExpanded && _isFullScreen) return;
+            _osdHideTimer.Stop(); _osdHideTimer.Start(); _osdShown = true;
 
-            if (OsdGrid.Visibility == Visibility.Visible)
-            {
-                _osdHideTimer.Start();
-                return;
-            }
-
-            HeaderGrid.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(150)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-
-            OsdGrid.Opacity = 0;
-            OsdGrid.RenderTransform = new ScaleTransform(0.95, 0.95);
-            OsdGrid.RenderTransformOrigin = new Point(0.5, 0.5);
+            SmallOsd.Visibility = _isExpanded ? Visibility.Collapsed : Visibility.Visible;
+            LargeOsd.Visibility = _isExpanded ? Visibility.Visible : Visibility.Collapsed;
             OsdGrid.Visibility = Visibility.Visible;
 
-            var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-            OsdGrid.BeginAnimation(OpacityProperty, fadeIn);
-
-            var scaleAnim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(250)) { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.2 } };
-            var scaleTransform = new ScaleTransform(0.95, 0.95);
-            OsdGrid.RenderTransform = scaleTransform;
-            scaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
-            scaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
-
-            var hideHeader = new DoubleAnimation(0, TimeSpan.FromMilliseconds(150)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-            hideHeader.Completed += (s, e) => HeaderGrid.Visibility = Visibility.Collapsed;
-            HeaderGrid.BeginAnimation(OpacityProperty, hideHeader);
-
-            _osdHideTimer.Start();
+            // Синхронный кроссфейд: шапка и OSD одной длины, без скачка размеров
+            Anim(OsdGrid, OpacityProperty, 1, 160, EaseOut());
+            if (TopPanel.Visibility == Visibility.Visible)
+                Anim(TopPanel, OpacityProperty, 0, 160, EaseIn(), done: (s, e) => { if (_osdShown) TopPanel.Visibility = Visibility.Collapsed; });
         }
 
         private void HideOSD()
         {
-            if (OsdGrid.Visibility != Visibility.Visible) return;
-
             _osdHideTimer.Stop();
-
-            var fadeOutOsd = new DoubleAnimation(0, TimeSpan.FromMilliseconds(150)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
-            fadeOutOsd.Completed += (s, e) => OsdGrid.Visibility = Visibility.Collapsed;
-            OsdGrid.BeginAnimation(OpacityProperty, fadeOutOsd);
-
-            HeaderGrid.Visibility = Visibility.Visible;
-            HeaderGrid.Opacity = 0;
-            var fadeInHeader = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-            HeaderGrid.BeginAnimation(OpacityProperty, fadeInHeader);
+            if (!_osdShown) return;
+            _osdShown = false;
+            Anim(OsdGrid, OpacityProperty, 0, 160, EaseIn(), done: (s, e) => { if (!_osdShown) OsdGrid.Visibility = Visibility.Collapsed; });
+            TopPanel.Visibility = (!_isExpanded && _isFullScreen) ? Visibility.Collapsed : Visibility.Visible;
+            if (TopPanel.Visibility == Visibility.Visible) Anim(TopPanel, OpacityProperty, 1, 160, EaseOut());
         }
 
-        private void UpdateShelfCount() { ShelfCountText.Text = $"\uD83D\uDCCE {_shelf.Files.Count}"; ShelfCountText.Visibility = _shelf.Files.Count > 0 ? Visibility.Visible : Visibility.Collapsed; }
-        private void UpdateClipboardCount() { ClipboardCountText.Text = $"\uD83D\uDCCB {_clipboard.History.Count}"; ClipboardCountText.Visibility = _clipboard.History.Count > 0 ? Visibility.Visible : Visibility.Collapsed; }
-
-        private Grid RowShell(double height = 40)
+        private void UpdateShelfCount()
         {
-            var g = new Grid { Height = height, Margin = new Thickness(0, 0, 0, 4), Background = new SolidColorBrush(Color.FromArgb(12, 255, 255, 255)) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+            ShelfCountText.Text = _shelf.Files.Count.ToString();
+            ShelfCountText.Visibility = _shelf.Files.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        private void UpdateClipboardCount()
+        {
+            ClipboardCountText.Text = _clipboard.History.Count.ToString();
+            ClipboardCountText.Visibility = _clipboard.History.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private Grid RowShell(double height = 44)
+        {
+            var g = new Grid { Height = height, Margin = new Thickness(0, 0, 0, 6) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var normal = new SolidColorBrush(Color.FromArgb(14, 255, 255, 255));
+            var hover = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
+            g.Background = normal;
+            g.MouseEnter += (s, e) => g.Background = hover;
+            g.MouseLeave += (s, e) => g.Background = normal;
             return g;
         }
-        private TextBlock RowText(string text, int col) { var t = new TextBlock { Text = text, FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(226, 232, 240)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0), TextTrimming = TextTrimming.CharacterEllipsis }; Grid.SetColumn(t, col); return t; }
-        private TextBlock EmptyHint(string text) => new TextBlock { Text = text, FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 12, 0, 12) };
-        private TextBlock CenterIcon(string glyph) => new TextBlock { Text = glyph, FontSize = 15, FontFamily = new FontFamily("Segoe UI Emoji"), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        private Border IconChip(string glyph, Color color) => new()
+        {
+            Width = 34,
+            Height = 34,
+            CornerRadius = new CornerRadius(10),
+            Background = new SolidColorBrush(Color.FromArgb(30, color.R, color.G, color.B)),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Child = new TextBlock { Text = glyph, FontFamily = IconFont, FontSize = 15, Foreground = new SolidColorBrush(color), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+        };
+        private TextBlock RowText(string text, int col)
+        {
+            var t = new TextBlock { Text = text, FontSize = 12, Foreground = new SolidColorBrush(Color.FromRgb(226, 232, 240)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 8, 0), TextTrimming = TextTrimming.CharacterEllipsis };
+            Grid.SetColumn(t, col); return t;
+        }
+        private TextBlock EmptyHint(string text) => new()
+        {
+            Text = text,
+            FontSize = 12,
+            Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 16, 0, 16)
+        };
         private Button IconBtn(string glyph, Action onClick, Color? fg = null)
         {
-            var b = new Button { Style = (Style)FindResource("IconButton"), Content = glyph, FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 12 };
-            if (fg.HasValue) b.Foreground = new SolidColorBrush(fg.Value);
+            var b = new Button { Style = (Style)FindResource("MediaButton"), Content = glyph, FontSize = 13, Width = 30, Height = 30 };
+            b.Foreground = fg.HasValue ? new SolidColorBrush(fg.Value) : new SolidColorBrush(Color.FromRgb(148, 163, 184));
             b.Click += (s, e) => onClick();
             return b;
         }
 
         protected override void OnClosed(EventArgs e)
         {
-            _clockTimer.Stop(); _osdHideTimer.Stop(); _layoutTimer.Stop(); _hoverTimer.Stop(); _playerPosTimer.Stop(); _activeWindowTimer.Stop(); _systemMonitorTimer.Stop();
+            _clockTimer.Stop(); _osdHideTimer.Stop(); _layoutTimer.Stop(); _hoverTimer.Stop(); _systemMonitorTimer.Stop();
             if (_hwnd != IntPtr.Zero) NativeMethods.RemoveClipboardFormatListener(_hwnd);
-            _audio.Dispose(); _player.Dispose(); _systemMonitor.Dispose();
+            _audio.Dispose(); _systemMonitor.Dispose(); _mediaSession.Dispose(); _appVolume.Dispose(); _vpnService.Dispose();
             base.OnClosed(e);
         }
     }
