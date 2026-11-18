@@ -3,8 +3,9 @@
     public enum TabType
     {
         Sound,
-        Clipboard,
         Shelf,
+        Clipboard,
+        Timer,
         Vpn
     }
 }

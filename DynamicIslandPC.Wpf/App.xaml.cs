@@ -12,20 +12,24 @@ namespace DynamicIslandPC.Wpf
         {
             base.OnStartup(e);
 
+            // Подписываемся на ошибки ДО создания окна
             DispatcherUnhandledException += OnDispatcherUnhandledException;
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
-
             Log.Info("=== Dynamic Island PC запущен ===");
+
+            // Создаем главное окно вручную
+            var mainWindow = new MainWindow();
+            MainWindow = mainWindow;
+            mainWindow.Show();
         }
 
         private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             Log.Error("Необработанное исключение UI-потока", e.Exception);
-            MessageBox.Show(
-                "Ошибка:\n" + e.Exception.Message + "\n\nПодробности в логе:\n%LocalAppData%\\DynamicIslandPC\\logs",
+            MessageBox.Show("Ошибка:\n" + e.Exception.Message + "\n\nПодробности в логе:\n%LocalAppData%\\DynamicIslandPC\\logs",
                 "Dynamic Island PC", MessageBoxButton.OK, MessageBoxImage.Error);
-            e.Handled = true; // не роняем оверлей из-за одной ошибки
+            e.Handled = true;
         }
 
         private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)

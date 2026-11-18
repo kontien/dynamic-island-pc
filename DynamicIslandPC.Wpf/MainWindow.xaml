@@ -4,101 +4,114 @@
         Title="Dynamic Island PC"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
-        Width="800" Height="600" WindowStartupLocation="Manual"
-        AllowDrop="True" FontFamily="Segoe UI Variable Display, Segoe UI"
+        Width="900" Height="700" WindowStartupLocation="Manual"
+        AllowDrop="True"
+        FontFamily="Consolas, 'Courier New', monospace"
         RenderOptions.BitmapScalingMode="HighQuality"
         DragOver="Window_DragOver" Drop="Window_Drop">
 
     <Window.Resources>
-        <Color x:Key="Cyan">#22D3EE</Color>
-        <Color x:Key="Violet">#A78BFA</Color>
-        <Color x:Key="Success">#34D399</Color>
-        <Color x:Key="Warning">#F59E0B</Color>
-        <Color x:Key="Danger">#EF4444</Color>
-        <Color x:Key="Info">#66C0F4</Color>
-        <SolidColorBrush x:Key="TextPrimary" Color="#F8FAFC"/>
-        <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8"/>
-        <SolidColorBrush x:Key="TextMuted" Color="#64748B"/>
-        <SolidColorBrush x:Key="Surface" Color="#B3111827"/>
-        <SolidColorBrush x:Key="SurfaceHover" Color="#CC1E293B"/>
-        <SolidColorBrush x:Key="Stroke" Color="#1AFFFFFF"/>
-        <SolidColorBrush x:Key="AccentColor" Color="{StaticResource Cyan}"/>
-        <SolidColorBrush x:Key="AccentGlow" Color="#3322D3EE"/>
-        <Color x:Key="AccentColorValue">#22D3EE</Color>
+        <!-- CYBERPUNK NEON ЦВЕТА -->
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#8B97A8"/>
+        <SolidColorBrush x:Key="TextFaint" Color="#4A5568"/>
+        <SolidColorBrush x:Key="CardBg" Color="#0F0F15"/>
+        <SolidColorBrush x:Key="Hair" Color="#1A1A25"/>
+        <Color x:Key="NeonPink">#FF0055</Color>
+        <Color x:Key="NeonCyan">#00F0FF</Color>
+        <Color x:Key="NeonGreen">#00FF88</Color>
+        <SolidColorBrush x:Key="AccentColor" Color="{StaticResource NeonPink}"/>
+        <SolidColorBrush x:Key="Amber" Color="#FFB020"/>
+        <SolidColorBrush x:Key="Coral" Color="#FF5E6C"/>
+        <SolidColorBrush x:Key="Lime" Color="#00FF88"/>
+        <SolidColorBrush x:Key="Azure" Color="#00F0FF"/>
+        <SolidColorBrush x:Key="Violet" Color="#A78BFA"/>
 
+        <LinearGradientBrush x:Key="IslandBgGrad" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#E60A0A10" Offset="0"/>
+            <GradientStop Color="#E6050508" Offset="1"/>
+        </LinearGradientBrush>
         <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,0">
-            <GradientStop Color="#22D3EE" Offset="0"/>
-            <GradientStop Color="#A78BFA" Offset="1"/>
+            <GradientStop Color="#FF0055" Offset="0"/>
+            <GradientStop Color="#00F0FF" Offset="1"/>
         </LinearGradientBrush>
-        <LinearGradientBrush x:Key="IslandBg" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#F41B2438" Offset="0"/>
-            <GradientStop Color="#F40D1424" Offset="1"/>
-        </LinearGradientBrush>
-        <LinearGradientBrush x:Key="IslandStroke" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#38FFFFFF" Offset="0"/>
-            <GradientStop Color="#12FFFFFF" Offset="1"/>
-        </LinearGradientBrush>
-        <LinearGradientBrush x:Key="VpnOnGradient" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#34D399" Offset="0"/>
-            <GradientStop Color="#059669" Offset="1"/>
-        </LinearGradientBrush>
-        <LinearGradientBrush x:Key="VpnOffGradient" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#273349" Offset="0"/>
-            <GradientStop Color="#141C2E" Offset="1"/>
-        </LinearGradientBrush>
-
         <FontFamily x:Key="IconFont">Segoe MDL2 Assets</FontFamily>
-        <Style x:Key="FluentIcon" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
-        </Style>
 
-        <Style x:Key="TabButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+        <!-- НЕОНОВОЕ СВЕЧЕНИЕ -->
+        <DropShadowEffect x:Key="NeonGlow" Color="#FF0055" BlurRadius="15" ShadowDepth="0" Opacity="0.6"/>
+        <DropShadowEffect x:Key="CyanGlow" Color="#00F0FF" BlurRadius="15" ShadowDepth="0" Opacity="0.6"/>
+
+        <!-- СТИЛЬ ПЛИТОК С НЕОНОВЫМ HOVER -->
+        <Style x:Key="TileBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBg}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Hair}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="ClipToBounds" Value="True"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Template">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="Transparent" Padding="0,8">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#151520"/>
+                    <Setter Property="BorderBrush" Value="#FF0055"/>
+                    <Setter Property="Effect" Value="{StaticResource NeonGlow}"/>
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" To="1.03" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="1.03" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.2"/>
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.2"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
-        <!-- Аудио-пилюли: hover БЕЗ scale → никогда не выходят за границы -->
-        <Style x:Key="AudioPillButton" TargetType="Button">
-            <Setter Property="Height" Value="40"/>
+        <Style x:Key="TileTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#FF0055"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Stroke}"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        </Style>
+
+        <Style x:Key="SearchBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#0A0A10"/>
+            <Setter Property="BorderBrush" Value="#1A1A25"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="CaretBrush" Value="#FF0055"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1" CornerRadius="14" ClipToBounds="True">
-                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,12,0"/>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="{StaticResource SurfaceHover}"/>
-                                <Setter TargetName="bg" Property="BorderBrush" Value="#5522D3EE"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#E60B1220"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#FF0055"/>
+                                <Setter TargetName="border" Property="Effect" Value="{StaticResource NeonGlow}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -108,43 +121,88 @@
 
         <Style x:Key="MediaButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Width" Value="36"/>
-            <Setter Property="Height" Value="36"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="12" RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <ScaleTransform x:Name="sc" ScaleX="1" ScaleY="1"/>
-                            </Border.RenderTransform>
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="16">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#2422D3EE"/>
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleX" To="1.08" Duration="0:0:0.12"/>
-                                            <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleY" To="1.08" Duration="0:0:0.12"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.16"/>
-                                            <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.16"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
+                                <Setter TargetName="bg" Property="Background" Value="#FF0055"/>
+                                <Setter TargetName="bg" Property="Effect" Value="{StaticResource NeonGlow}"/>
                             </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#3322D3EE"/>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.35"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource MediaButton}">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#8B97A8"/>
+        </Style>
+
+        <Style x:Key="ChipButton" TargetType="Button">
+            <Setter Property="Background" Value="#0F0F15"/>
+            <Setter Property="BorderBrush" Value="#1A1A25"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="8"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#FF0055"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="#FF0055"/>
+                                <Setter TargetName="bg" Property="Effect" Value="{StaticResource NeonGlow}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DeviceButton" TargetType="Button">
+            <Setter Property="Background" Value="#0F0F15"/>
+            <Setter Property="BorderBrush" Value="#1A1A25"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="8"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" ClipToBounds="True">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,6,0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="BorderBrush" Value="#00F0FF"/>
+                                <Setter TargetName="bg" Property="Effect" Value="{StaticResource CyanGlow}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -155,19 +213,23 @@
         <Style x:Key="CustomSlider" TargetType="Slider">
             <Setter Property="Minimum" Value="0"/>
             <Setter Property="Maximum" Value="100"/>
-            <Setter Property="Height" Value="22"/>
+            <Setter Property="Height" Value="18"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid VerticalAlignment="Center">
-                            <Border Height="6" CornerRadius="3" Background="#26334A"/>
+                            <Border Height="5" CornerRadius="3" Background="#1A1A25"/>
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="6" CornerRadius="3" Background="{StaticResource AccentGradient}"/>
+                                                <Border Height="5" CornerRadius="3" Background="#FF0055">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect Color="#FF0055" BlurRadius="8" ShadowDepth="0" Opacity="0.8"/>
+                                                    </Border.Effect>
+                                                </Border>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
@@ -185,9 +247,9 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Grid Width="18" Height="18">
-                                                    <Ellipse Fill="#22D3EE" Opacity="0.25"/>
-                                                    <Ellipse Width="12" Height="12" Fill="#F8FAFC"/>
+                                                <Grid Width="15" Height="15">
+                                                    <Ellipse Fill="#FF0055" Opacity="0.3"/>
+                                                    <Ellipse Width="10" Height="10" Fill="#FFFFFF"/>
                                                 </Grid>
                                             </ControlTemplate>
                                         </Thumb.Template>
@@ -207,7 +269,7 @@
                         <Border Background="{TemplateBinding Background}" CornerRadius="3" ClipToBounds="True">
                             <Grid>
                                 <Rectangle x:Name="PART_Track" Fill="Transparent"/>
-                                <Rectangle x:Name="PART_Indicator" Fill="{StaticResource AccentGradient}" HorizontalAlignment="Left" RadiusX="3" RadiusY="3"/>
+                                <Rectangle x:Name="PART_Indicator" Fill="{TemplateBinding Foreground}" HorizontalAlignment="Left" RadiusX="3" RadiusY="3"/>
                             </Grid>
                         </Border>
                     </ControlTemplate>
@@ -245,13 +307,10 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border x:Name="th" CornerRadius="4" Background="#334155" Margin="2,0"/>
+                                                <Border x:Name="th" CornerRadius="4" Background="#FF0055" Margin="2,0"/>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="th" Property="Background" Value="#475569"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsDragging" Value="True">
-                                                        <Setter TargetName="th" Property="Background" Value="{StaticResource AccentGradient}"/>
+                                                        <Setter TargetName="th" Property="Effect" Value="{StaticResource NeonGlow}"/>
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -266,14 +325,17 @@
         </Style>
 
         <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="#F20D1424"/>
-            <Setter Property="BorderBrush" Value="#26FFFFFF"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Background" Value="#0A0A10"/>
+            <Setter Property="BorderBrush" Value="#FF0055"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="HasDropShadow" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ContextMenu">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="5">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="4">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#FF0055" BlurRadius="15" ShadowDepth="0" Opacity="0.5"/>
+                            </Border.Effect>
                             <ItemsPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -281,19 +343,19 @@
             </Setter>
         </Style>
         <Style TargetType="MenuItem">
-            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="MenuItem">
-                        <Border x:Name="bg" Background="Transparent" CornerRadius="9" Padding="12,8" Margin="2,1">
+                        <Border x:Name="bg" Background="Transparent" CornerRadius="8" Padding="12,8" Margin="2,1">
                             <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#2222D3EE"/>
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="bg" Property="Background" Value="#FF0055"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -305,7 +367,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Separator">
-                        <Border Height="1" Background="#1AFFFFFF"/>
+                        <Border Height="1" Background="#1A1A25"/>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -313,324 +375,606 @@
     </Window.Resources>
 
     <Grid Background="Transparent">
-        <Grid x:Name="IslandContainer" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0">
-            <Border x:Name="IslandBorder" Width="320" Height="48" CornerRadius="24"
-                    Background="{StaticResource IslandBg}" BorderBrush="{StaticResource IslandStroke}" BorderThickness="1">
+        <Grid x:Name="IslandContainer" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0">
+            <Border x:Name="IslandBorder" Width="280" Height="44" CornerRadius="22"
+                    Background="{StaticResource IslandBgGrad}"
+                    AllowDrop="True" MouseUp="IslandBorder_MouseUp">
                 <Border.Effect>
-                    <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="4" Opacity="0.32"/>
+                    <DropShadowEffect Color="#FF0055" BlurRadius="20" ShadowDepth="0" Opacity="0.4"/>
                 </Border.Effect>
                 <Border.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Очистить буфер" Click="MenuClearClipboard_Click"/>
-                        <MenuItem Header="Очистить полку" Click="MenuClearShelf_Click"/>
+                        <MenuItem x:Name="PinMenuItem" Header="📌 Закрепить" Click="PinMenuItem_Click"/>
                         <Separator/>
-                        <MenuItem Header="Выход" Foreground="#EF4444" Click="MenuExit_Click"/>
+                        <MenuItem Header="📸 Снимок экрана (Ctrl+Alt+S)" Click="QuickShot_Click"/>
+                        <MenuItem Header="📋 Очистить буфер" Click="MenuClearClipboard_Click"/>
+                        <MenuItem Header="📁 Очистить полку" Click="MenuClearShelf_Click"/>
+                        <Separator/>
+                        <MenuItem Header="✕ Выход" Foreground="#FF0055" Click="MenuExit_Click"/>
                     </ContextMenu>
                 </Border.ContextMenu>
 
                 <Grid ClipToBounds="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
                     <!-- ШАПКА -->
-                    <Grid x:Name="TopPanel" Grid.Row="0" Height="48" Margin="20,0,20,0">
+                    <Grid x:Name="TopPanel" Grid.Row="0" Height="44" Margin="20,0,20,0"
+                          Cursor="Hand" MouseLeftButtonUp="TopPanel_MouseLeftButtonUp">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Viewbox x:Name="ClockViewbox" Stretch="Uniform" Height="30" HorizontalAlignment="Left">
-                                    <TextBlock x:Name="ClockText" Text="00:00" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
+                                <Viewbox x:Name="ClockViewbox" Stretch="Uniform" Height="28" HorizontalAlignment="Left">
+                                    <TextBlock x:Name="ClockText" Text="00:00" FontSize="22" FontWeight="Bold" Foreground="#FF0055">
+                                        <TextBlock.Effect>
+                                            <DropShadowEffect Color="#FF0055" BlurRadius="10" ShadowDepth="0" Opacity="0.8"/>
+                                        </TextBlock.Effect>
+                                    </TextBlock>
                                 </Viewbox>
+                                <TextBlock x:Name="BackHint" Text="← ESC" FontSize="11" FontWeight="Bold"
+                                           Foreground="#00F0FF" Margin="12,0,0,0"
+                                           VerticalAlignment="Center" Visibility="Collapsed" Opacity="0.8"/>
                                 <StackPanel x:Name="CountersPanel" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                                    <Border Width="1" Height="16" Background="#26FFFFFF" Margin="0,0,12,0"/>
-                                    <Border x:Name="CapsBadge" Background="#26F59E0B" CornerRadius="6" Padding="6,2" Margin="0,0,8,0" Visibility="Collapsed">
-                                        <TextBlock x:Name="CapsText" Text="CAPS" FontSize="9" FontWeight="Bold" Foreground="#F59E0B"/>
-                                    </Border>
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8B7;" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,4,0"/>
-                                    <TextBlock x:Name="ShelfCountText" Text="0" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,0,10,0" Visibility="Collapsed"/>
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8C8;" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,4,0"/>
-                                    <TextBlock x:Name="ClipboardCountText" Text="0" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" Margin="0,0,10,0" Visibility="Collapsed"/>
-                                    <TextBlock x:Name="VpnIndicatorText" Style="{StaticResource FluentIcon}" Text="&#xE72E;" FontSize="12" Foreground="#34D399" Visibility="Collapsed"/>
+                                    <TextBlock x:Name="CapsText" Text="CAPS" FontSize="10" FontWeight="Bold" Foreground="#FFB020" Margin="0,0,8,0" Visibility="Collapsed"/>
+                                    <TextBlock x:Name="ShelfCountText" Text="📎 0" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,8,0" Visibility="Collapsed"/>
+                                    <TextBlock x:Name="ClipboardCountText" Text="📋 0" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF" Visibility="Collapsed"/>
+                                    <TextBlock x:Name="VpnIndicatorText" Text="🛡️" FontSize="11" Foreground="#00FF88" Margin="8,0,0,0" Visibility="Collapsed"/>
+                                    <TextBlock x:Name="PinIndicator" Text="📌" FontSize="11" Foreground="#FFB020" Margin="8,0,0,0" Visibility="Collapsed"/>
                                 </StackPanel>
                             </StackPanel>
                             <StackPanel x:Name="DatePanel" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,3,0,0" Opacity="0" Visibility="Collapsed">
-                                <TextBlock x:Name="DateText" Text="" FontSize="12" Foreground="{StaticResource TextSecondary}"/>
-                                <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE765;" FontSize="11" Foreground="{StaticResource TextMuted}" Margin="10,0,4,0"/>
-                                <TextBlock x:Name="LayoutText" Text="EN" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentColor}"/>
+                                <TextBlock x:Name="DateText" Text="" FontSize="12" Foreground="#8B97A8"/>
+                                <TextBlock x:Name="LayoutText" Text="• EN" FontSize="12" FontWeight="Bold" Foreground="#00F0FF" Margin="6,0,0,0"/>
                             </StackPanel>
                         </StackPanel>
-
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                             <Viewbox x:Name="CpuViewbox" Width="24" Height="24" Margin="0,0,8,0">
                                 <Grid Width="48" Height="48">
-                                    <Ellipse Stroke="#26334A" StrokeThickness="4"/>
-                                    <Ellipse x:Name="CpuRing" Stroke="#22D3EE" StrokeThickness="4" StrokeDashArray="37.7" StrokeDashOffset="37.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                    <Ellipse Stroke="#1A1A25" StrokeThickness="4"/>
+                                    <Ellipse x:Name="CpuRing" Stroke="#00F0FF" StrokeThickness="4" StrokeDashArray="37.7" StrokeDashOffset="37.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                                         <Ellipse.RenderTransform>
                                             <RotateTransform Angle="-90" CenterX="24" CenterY="24"/>
                                         </Ellipse.RenderTransform>
                                     </Ellipse>
-                                    <TextBlock x:Name="BigCpuValue" Text="0" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="BigCpuValue" Text="0%" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
                             </Viewbox>
                             <Viewbox x:Name="RamViewbox" Width="24" Height="24" Margin="0,0,8,0">
                                 <Grid Width="48" Height="48">
-                                    <Ellipse Stroke="#26334A" StrokeThickness="4"/>
-                                    <Ellipse x:Name="RamRing" Stroke="#A78BFA" StrokeThickness="4" StrokeDashArray="37.7" StrokeDashOffset="37.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                    <Ellipse Stroke="#1A1A25" StrokeThickness="4"/>
+                                    <Ellipse x:Name="RamRing" Stroke="#FFB020" StrokeThickness="4" StrokeDashArray="37.7" StrokeDashOffset="37.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                                         <Ellipse.RenderTransform>
                                             <RotateTransform Angle="-90" CenterX="24" CenterY="24"/>
                                         </Ellipse.RenderTransform>
                                     </Ellipse>
-                                    <TextBlock x:Name="BigRamValue" Text="0" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="BigRamValue" Text="0%" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
                             </Viewbox>
                             <Viewbox x:Name="GpuViewbox" Width="24" Height="24">
                                 <Grid Width="48" Height="48">
-                                    <Ellipse Stroke="#26334A" StrokeThickness="4"/>
-                                    <Ellipse x:Name="GpuRing" Stroke="#34D399" StrokeThickness="4" StrokeDashArray="37.7" StrokeDashOffset="37.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                    <Ellipse Stroke="#1A1A25" StrokeThickness="4"/>
+                                    <Ellipse x:Name="GpuRing" Stroke="#00FF88" StrokeThickness="4" StrokeDashArray="37.7" StrokeDashOffset="37.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                                         <Ellipse.RenderTransform>
                                             <RotateTransform Angle="-90" CenterX="24" CenterY="24"/>
                                         </Ellipse.RenderTransform>
                                     </Ellipse>
-                                    <TextBlock x:Name="BigGpuValue" Text="0" FontSize="13" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="BigGpuValue" Text="0%" FontSize="14" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
                             </Viewbox>
                         </StackPanel>
                     </Grid>
 
-                    <!-- OSD: метрики 1-в-1 как у шапки (те же отступы, соразмерные иконка/проценты) -->
-                    <Grid x:Name="OsdGrid" Grid.Row="0" Visibility="Collapsed" VerticalAlignment="Center"
-                          MouseLeftButtonUp="OsdGrid_MouseLeftButtonUp" Cursor="Hand">
-                        <!-- Свернутый: строка 48, иконка 30 (как часы), проценты 18 -->
-                        <Grid x:Name="SmallOsd" Height="48" Margin="20,0" VerticalAlignment="Center" Visibility="Collapsed">
+                    <!-- ТОЧКА (fullscreen) -->
+                    <Grid x:Name="DotFace" Grid.Row="0" Width="22" Height="22" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Ellipse Fill="#FF0055" Opacity="0.3"/>
+                        <Ellipse Width="8" Height="8" Fill="#FF0055" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Ellipse.Effect>
+                                <DropShadowEffect Color="#FF0055" BlurRadius="10" ShadowDepth="0" Opacity="1"/>
+                            </Ellipse.Effect>
+                        </Ellipse>
+                    </Grid>
+
+                    <!-- OSD -->
+                    <Grid x:Name="OsdGrid" Grid.Row="0" Visibility="Collapsed" VerticalAlignment="Center">
+                        <Grid x:Name="SmallOsd" Margin="20,0,20,0" VerticalAlignment="Center" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <Border Width="30" Height="30" CornerRadius="10" Background="#2222D3EE" Margin="0,0,12,0">
-                                <TextBlock x:Name="SmallOsdIcon" Style="{StaticResource FluentIcon}" Text="&#xE767;" FontSize="15" Foreground="{StaticResource AccentColor}"/>
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,14,0">
-                                <TextBlock x:Name="SmallOsdAppName" Text="Система" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
-                                <ProgressBar x:Name="SmallOsdProgress" Minimum="0" Maximum="100" Value="50" Height="6" Background="#26334A" BorderThickness="0"/>
+                            <TextBlock x:Name="SmallOsdIcon" Text="🔊" FontSize="16" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock x:Name="SmallOsdAppName" Text="Система" FontSize="9" Foreground="#8B97A8" TextTrimming="CharacterEllipsis"/>
+                                <ProgressBar x:Name="SmallOsdProgress" Minimum="0" Maximum="100" Value="50" Height="4" Foreground="#FF0055" Background="#1A1A25" BorderThickness="0" Margin="0,3,0,0"/>
                             </StackPanel>
-                            <TextBlock x:Name="SmallOsdPercentText" Grid.Column="2" Text="50%" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="SmallOsdPercentText" Grid.Column="2" Text="50%" FontSize="15" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                         </Grid>
-                        <!-- Раскрытый: строка 78, иконка 48 (как кольца), проценты 36 (как часы) -->
-                        <Grid x:Name="LargeOsd" Height="78" Margin="20,0" VerticalAlignment="Center" Visibility="Collapsed">
+                        <Grid x:Name="LargeOsd" Margin="24,0,24,0" VerticalAlignment="Center" Visibility="Collapsed">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <Border Width="48" Height="48" CornerRadius="15" Background="#2222D3EE" Margin="0,0,18,0">
-                                <TextBlock x:Name="LargeOsdIcon" Style="{StaticResource FluentIcon}" Text="&#xE767;" FontSize="22" Foreground="{StaticResource AccentColor}"/>
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
-                                <TextBlock x:Name="LargeOsdAppName" Text="Система" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
-                                <ProgressBar x:Name="LargeOsdProgress" Minimum="0" Maximum="100" Value="50" Height="10" Background="#26334A" BorderThickness="0"/>
+                            <TextBlock x:Name="LargeOsdIcon" Text="🔊" FontSize="36" VerticalAlignment="Center" Margin="0,0,24,0"/>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock x:Name="LargeOsdAppName" Text="Система" FontSize="16" FontWeight="SemiBold" Foreground="#8B97A8" TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
+                                <ProgressBar x:Name="LargeOsdProgress" Minimum="0" Maximum="100" Value="50" Height="12" Foreground="#FF0055" Background="#1A1A25" BorderThickness="0"/>
                             </StackPanel>
-                            <TextBlock x:Name="LargeOsdPercentText" Grid.Column="2" Text="50%" FontSize="36" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="LargeOsdPercentText" Grid.Column="2" Text="50%" FontSize="42" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
                         </Grid>
                     </Grid>
 
-                    <!-- ТАБ-БАР -->
-                    <Border x:Name="TabBar" Grid.Row="1" Background="#660D1424" CornerRadius="14" Padding="4" Margin="20,2,20,12" Visibility="Collapsed" Opacity="0">
-                        <Grid x:Name="TabGrid" SizeChanged="TabGrid_SizeChanged">
-                            <Canvas>
-                                <Border x:Name="TabPill" CornerRadius="10" Height="30" Width="125" Canvas.Top="0" Background="#2622D3EE" BorderBrush="#5522D3EE" BorderThickness="1">
-                                    <Border.RenderTransform>
-                                        <TranslateTransform X="0"/>
-                                    </Border.RenderTransform>
-                                </Border>
-                            </Canvas>
-                            <UniformGrid Rows="1" Columns="4">
-                                <Button x:Name="SoundTabBtn" Style="{StaticResource TabButton}" Click="SoundTab_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE767;" FontSize="12" Margin="0,0,6,0"/>
-                                        <TextBlock Text="Звук"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ClipboardTabBtn" Style="{StaticResource TabButton}" Click="ClipboardTab_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8C8;" FontSize="12" Margin="0,0,6,0"/>
-                                        <TextBlock Text="Буфер"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ShelfTabBtn" Style="{StaticResource TabButton}" Click="ShelfTab_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE8B7;" FontSize="12" Margin="0,0,6,0"/>
-                                        <TextBlock Text="Полка"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="VpnTabBtn" Style="{StaticResource TabButton}" Click="VpnTab_Click">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE72E;" FontSize="12" Margin="0,0,6,0"/>
-                                        <TextBlock Text="VPN"/>
-                                    </StackPanel>
-                                </Button>
-                            </UniformGrid>
-                        </Grid>
-                    </Border>
+                    <!-- ДОСКА: мозаика 4×4 -->
+                    <Grid x:Name="BoardGrid" Grid.Row="1" ClipToBounds="True" Margin="8,0,8,8" Visibility="Collapsed" Opacity="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                    <!-- КОНТЕНТ -->
-                    <Grid x:Name="TabContentGrid" Grid.Row="2" ClipToBounds="True" Background="Transparent" Margin="20,0,20,18"
-                          Visibility="Collapsed" Opacity="0"
-                          PreviewMouseLeftButtonDown="TabContent_PreviewDown" PreviewMouseMove="TabContent_PreviewMove" PreviewMouseLeftButtonUp="TabContent_PreviewUp">
+                        <!-- РЯД 1 -->
+                        <Border x:Name="TileMedia" Style="{StaticResource TileBorder}" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2" MouseLeftButtonUp="TileMedia_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource TileTitle}" Text="🎵 СЕЙЧАС ИГРАЕТ"/>
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="PlayerCoverBorder" Width="44" Height="44" CornerRadius="10" Background="#1A1A25" Margin="0,0,10,0">
+                                        <TextBlock x:Name="PlayerCoverText" Text="🎵" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock x:Name="PlayerTitleText" Text="Нет трека" FontSize="12" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock x:Name="PlayerArtistText" Text="YouTube / Spotify" FontSize="9" Foreground="#8B97A8" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button x:Name="PrevBtn" Style="{StaticResource MediaButton}" Width="28" Height="28" FontSize="11" Content="&#xE892;" Click="Prev_Click" Margin="0,0,2,0"/>
+                                        <Button x:Name="PlayPauseBtn" Style="{StaticResource MediaButton}" Width="28" Height="28" FontSize="12" Content="&#xE768;" Click="PlayPause_Click" Margin="0,0,2,0"/>
+                                        <Button x:Name="NextBtn" Style="{StaticResource MediaButton}" Width="28" Height="28" FontSize="11" Content="&#xE893;" Click="Next_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid x:Name="TimelineGrid" Grid.Row="2" Margin="0,6,0,0" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="TimelineCurrentText" Text="0:00" FontSize="8" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <ProgressBar x:Name="TrackProgress" Grid.Column="1" Minimum="0" Maximum="100" Value="0" Height="4" Foreground="#FF0055" Background="#1A1A25" BorderThickness="0" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="TimelineTotalText" Grid.Column="2" Text="0:00" FontSize="8" Foreground="#4A5568" VerticalAlignment="Center" Margin="6,0,10,0"/>
+                                    <StackPanel x:Name="EqBars" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Height="14">
+                                        <Rectangle Width="2" Fill="#FF0055" RadiusX="1" RadiusY="1" Margin="1,0" Height="5"/>
+                                        <Rectangle Width="2" Fill="#00F0FF" RadiusX="1" RadiusY="1" Margin="1,0" Height="9"/>
+                                        <Rectangle Width="2" Fill="#FF0055" RadiusX="1" RadiusY="1" Margin="1,0" Height="12"/>
+                                        <Rectangle Width="2" Fill="#00F0FF" RadiusX="1" RadiusY="1" Margin="1,0" Height="7"/>
+                                        <Rectangle Width="2" Fill="#FF0055" RadiusX="1" RadiusY="1" Margin="1,0" Height="10"/>
+                                        <Rectangle Width="2" Fill="#00F0FF" RadiusX="1" RadiusY="1" Margin="1,0" Height="6"/>
+                                        <Rectangle Width="2" Fill="#FF0055" RadiusX="1" RadiusY="1" Margin="1,0" Height="9"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
 
-                        <!-- SOUND: правая колонка с запасом, пилюли не выходят за край -->
-                        <Grid x:Name="SoundTab" Visibility="Collapsed" ClipToBounds="True">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="18"/>
-                                <ColumnDefinition Width="168"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                <Border Background="{StaticResource Surface}" CornerRadius="16" Padding="12" Margin="0,0,0,14" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
-                                    <Grid>
+                        <Border x:Name="TileClip" Style="{StaticResource TileBorder}" Grid.Column="2" Grid.Row="0" Grid.ColumnSpan="2" MouseLeftButtonUp="TileClip_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource TileTitle}" Text="📋 БУФЕР"/>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="ClipboardStack"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- РЯД 2 -->
+                        <Border x:Name="TileVol" Style="{StaticResource TileBorder}" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" MouseLeftButtonUp="TileVol_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource TileTitle}" Text="🔊 ГРОМКОСТЬ"/>
+                                <Grid Grid.Row="1" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="VolBigText" Text="50%" FontSize="22" FontWeight="Bold" Foreground="#FF0055" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock.Effect>
+                                            <DropShadowEffect Color="#FF0055" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/>
+                                        </TextBlock.Effect>
+                                    </TextBlock>
+                                    <Slider x:Name="VolumeSlider" Grid.Column="1" Style="{StaticResource CustomSlider}" Value="50" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <Button x:Name="MuteBtn" Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE767;" Click="MuteBtn_Click"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <Border x:Name="TileShelf" Style="{StaticResource TileBorder}" Grid.Column="2" Grid.Row="1" Grid.ColumnSpan="2" MouseLeftButtonUp="TileShelf_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource TileTitle}" Text="📁 ПОЛКА"/>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="ShelfStack"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- РЯД 3 -->
+                        <Border x:Name="TileOut" Style="{StaticResource TileBorder}" Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" MouseLeftButtonUp="TileOut_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource TileTitle}" Text="🎧 ВЫХОД"/>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="DeviceStack"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <Border x:Name="TileSys" Style="{StaticResource TileBorder}" Grid.Column="2" Grid.Row="2" Grid.ColumnSpan="2" MouseLeftButtonUp="TileSys_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource TileTitle}" Text="📊 СИСТЕМА"/>
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="CPU" FontSize="8" Foreground="#4A5568" FontWeight="Bold"/>
+                                        <TextBlock x:Name="SysCpuText" Text="0%" FontSize="14" FontWeight="Bold" Foreground="#00F0FF"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="RAM" FontSize="8" Foreground="#4A5568" FontWeight="Bold"/>
+                                        <TextBlock x:Name="SysRamText" Text="0%" FontSize="14" FontWeight="Bold" Foreground="#FFB020"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- РЯД 4 -->
+                        <Border x:Name="VpnTileBorder" Style="{StaticResource TileBorder}" Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" MouseLeftButtonUp="VpnTile_Click">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock x:Name="VpnIcon" Text="⏻" FontSize="18" HorizontalAlignment="Center" Foreground="#8B97A8"/>
+                                <TextBlock x:Name="VpnStatusText" Text="Выкл" FontSize="10" FontWeight="Bold" Foreground="#8B97A8" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                <TextBlock x:Name="VpnDetailsText" Text="подключить" FontSize="8" Foreground="#4A5568" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="TileQuick" Style="{StaticResource TileBorder}" Grid.Column="2" Grid.Row="3" Grid.ColumnSpan="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="QuickPin" Grid.Column="0" Style="{StaticResource ChipButton}" Content="📌" Margin="0,0,2,0" Click="QuickPin_Click"/>
+                                <Button x:Name="QuickShot" Grid.Column="1" Style="{StaticResource ChipButton}" Content="📸" Margin="2,0,2,0" Click="QuickShot_Click"/>
+                                <Button x:Name="QuickDev" Grid.Column="2" Style="{StaticResource ChipButton}" Content="🔁" Margin="2,0,2,0" Click="QuickDev_Click"/>
+                                <Button x:Name="QuickDnd" Grid.Column="3" Style="{StaticResource ChipButton}" Content="🌙" Margin="2,0,0,0" Click="QuickDnd_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- ==================== ФОКУС-ПАНЕЛИ ==================== -->
+
+                        <!-- МИКШЕР -->
+                        <Border x:Name="MixerPanel" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" Grid.RowSpan="4"
+                                Background="#0A0A10" BorderBrush="#FF0055" BorderThickness="2"
+                                CornerRadius="16" Padding="16" Visibility="Collapsed" Margin="4"
+                                MouseRightButtonUp="Panel_MouseRightButtonUp">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#FF0055" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="🎚️ МИКШЕР" FontSize="12" FontWeight="Bold" Foreground="#FF0055" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="← ESC" FontSize="11" Foreground="#8B97A8" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="MixerCloseBtn_Click"/>
+                                </Grid>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Button Content="🎮 ИГРЫ" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="PresetGames_Click"/>
+                                    <Button Content="💼 РАБОТА" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="PresetWork_Click"/>
+                                    <Button Content="🍿 КИНО" Style="{StaticResource ChipButton}" Click="PresetMovie_Click"/>
+                                </StackPanel>
+                                <TextBox x:Name="MixerSearchBox" Grid.Row="2" Style="{StaticResource SearchBox}" Margin="0,0,0,12"
+                                         TextChanged="MixerSearchBox_TextChanged"/>
+                                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="AppVolumeStack"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- МЕДИА-ЦЕНТР -->
+                        <Border x:Name="MediaPanel" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" Grid.RowSpan="4"
+                                Background="#0A0A10" BorderBrush="#FF0055" BorderThickness="2"
+                                CornerRadius="16" Padding="0" Visibility="Collapsed" Margin="4"
+                                MouseRightButtonUp="Panel_MouseRightButtonUp" ClipToBounds="True">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#FF0055" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Image x:Name="MediaBlurredCover" Stretch="UniformToFill" Opacity="0.3"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Image.Effect>
+                                        <BlurEffect Radius="40"/>
+                                    </Image.Effect>
+                                </Image>
+                                <Rectangle Fill="#000000" Opacity="0.5"/>
+
+                                <Grid Margin="20">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0" Margin="0,0,0,16">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border x:Name="PlayerCoverBorder" Width="50" Height="50" CornerRadius="13" Background="#26334A">
-                                            <TextBlock x:Name="PlayerCoverText" Style="{StaticResource FluentIcon}" Text="&#xE8D6;" FontSize="22" Foreground="{StaticResource TextSecondary}"/>
+                                        <TextBlock Text="🎵 МЕДИА-ЦЕНТР" FontSize="12" FontWeight="Bold" Foreground="#FF0055" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Content="← ESC" FontSize="11" Foreground="#8B97A8" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="MediaCloseBtn_Click"/>
+                                    </Grid>
+
+                                    <Grid Grid.Row="1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border x:Name="MediaLargeCover" Width="160" Height="160" CornerRadius="16" Background="#1A1A25" Margin="0,0,20,0">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="#FF0055" BlurRadius="15" ShadowDepth="0" Opacity="0.5"/>
+                                            </Border.Effect>
+                                            <TextBlock x:Name="MediaLargeCoverText" Text="🎵" FontSize="64" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0">
-                                            <TextBlock x:Name="PlayerTitleText" Text="Нет трека" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock x:Name="PlayerArtistText" Text="YouTube / Spotify" FontSize="11" Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button x:Name="PrevBtn" Style="{StaticResource MediaButton}" Content="&#xE892;" Click="Prev_Click" Margin="0,0,2,0"/>
-                                            <Button x:Name="PlayPauseBtn" Style="{StaticResource MediaButton}" Content="&#xE768;" Click="PlayPause_Click" Margin="0,0,2,0" FontSize="16" Background="#2622D3EE"/>
-                                            <Button x:Name="NextBtn" Style="{StaticResource MediaButton}" Content="&#xE893;" Click="Next_Click"/>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                            <TextBlock x:Name="MediaLargeTitle" Text="Нет трека" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock x:Name="MediaLargeArtist" Text="" FontSize="14" Foreground="#8B97A8" Margin="0,4,0,16"/>
+
+                                            <Grid Margin="0,0,0,12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock x:Name="MediaCurrentTime" Text="0:00" FontSize="10" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ProgressBar x:Name="MediaProgress" Grid.Column="1" Minimum="0" Maximum="100" Value="0" Height="6" Foreground="#FF0055" Background="#1A1A25" BorderThickness="0" Cursor="Hand" MouseLeftButtonUp="MediaProgress_Click"/>
+                                                <TextBlock x:Name="MediaTotalTime" Grid.Column="2" Text="0:00" FontSize="10" Foreground="#4A5568" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                            </Grid>
+
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,16">
+                                                <Button x:Name="ShuffleBtn" Style="{StaticResource ChipButton}" Content="🔀" Width="36" Height="30" Margin="0,0,6,0" Click="ShuffleBtn_Click"/>
+                                                <Button x:Name="RepeatBtn" Style="{StaticResource ChipButton}" Content="🔁" Width="36" Height="30" Margin="0,0,12,0" Click="RepeatBtn_Click"/>
+                                                <Button x:Name="MediaPrevBtn" Style="{StaticResource MediaButton}" Width="44" Height="44" FontSize="18" Content="&#xE892;" Click="Prev_Click" Margin="0,0,10,0"/>
+                                                <Button x:Name="MediaPlayPauseBtn" Style="{StaticResource MediaButton}" Width="44" Height="44" FontSize="20" Content="&#xE768;" Click="PlayPause_Click" Margin="0,0,10,0"/>
+                                                <Button x:Name="MediaNextBtn" Style="{StaticResource MediaButton}" Width="44" Height="44" FontSize="18" Content="&#xE893;" Click="Next_Click" Margin="0,0,12,0"/>
+                                                <Button x:Name="OpenAppBtn" Style="{StaticResource ChipButton}" Content="📱 APP" Width="80" Height="30" Click="OpenAppBtn_Click"/>
+                                            </StackPanel>
+
+                                            <Grid Margin="0,0,0,16">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="🔊 APP VOL:" FontSize="10" Foreground="#4A5568" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <Slider x:Name="AppVolumeSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="100" Style="{StaticResource CustomSlider}" ValueChanged="AppVolumeSlider_ValueChanged"/>
+                                                <TextBlock x:Name="AppVolumeText" Grid.Column="2" Text="100%" FontSize="10" Foreground="#FFFFFF" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                            </Grid>
+
+                                            <TextBlock Text="📱 СЕССИИ:" FontSize="10" FontWeight="Bold" Foreground="#4A5568" Margin="0,0,0,8"/>
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="120">
+                                                <StackPanel x:Name="MediaSessionsStack"/>
+                                            </ScrollViewer>
+
+                                            <TextBlock Text="🕐 ИСТОРИЯ:" FontSize="10" FontWeight="Bold" Foreground="#4A5568" Margin="0,12,0,8"/>
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="100">
+                                                <StackPanel x:Name="TrackHistoryStack"/>
+                                            </ScrollViewer>
                                         </StackPanel>
                                     </Grid>
-                                </Border>
-                                <Grid Margin="4,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="46"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE767;" FontSize="14" Foreground="{StaticResource TextSecondary}" Margin="0,0,12,0"/>
-                                    <Slider x:Name="VolumeSlider" Grid.Column="1" Style="{StaticResource CustomSlider}" Value="50" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                    <TextBlock x:Name="VolumeValueText" Grid.Column="2" Text="50%" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource AccentColor}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                 </Grid>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,2,0">
-                                <Button x:Name="BtnAudioSpeakers" Style="{StaticResource AudioPillButton}" HorizontalAlignment="Stretch" MaxWidth="164" Click="BtnAudioSpeakers_Click"/>
-                                <Button x:Name="BtnAudioHeadphones" Style="{StaticResource AudioPillButton}" HorizontalAlignment="Stretch" MaxWidth="164" Click="BtnAudioHeadphones_Click" Margin="0"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- CLIPBOARD -->
-                        <Grid x:Name="ClipboardTab" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Grid Margin="4,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="История буфера" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
-                                <Button Grid.Column="1" Content="Очистить" Style="{StaticResource MediaButton}" Width="76" Height="24" FontSize="10" FontFamily="Segoe UI" Click="ClearClipboard_Click"/>
                             </Grid>
-                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
-                                <StackPanel x:Name="ClipboardStack"/>
-                            </ScrollViewer>
-                        </Grid>
+                        </Border>
 
-                        <!-- SHELF -->
-                        <Grid x:Name="ShelfTab" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="Перетащи файлы сюда" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondary}" Margin="4,0,0,10"/>
-                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
-                                <StackPanel x:Name="ShelfStack"/>
-                            </ScrollViewer>
-                        </Grid>
-
-                        <!-- VPN -->
-                        <Grid x:Name="VpnTab" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Border Background="{StaticResource Surface}" CornerRadius="16" Padding="14,11" Margin="0,0,0,12" BorderBrush="{StaticResource Stroke}" BorderThickness="1">
-                                <Grid>
+                        <!-- МЕНЕДЖЕР БУФЕРА -->
+                        <Border x:Name="ClipboardPanel" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" Grid.RowSpan="4"
+                                Background="#0A0A10" BorderBrush="#00F0FF" BorderThickness="2"
+                                CornerRadius="16" Padding="16" Visibility="Collapsed" Margin="4"
+                                MouseRightButtonUp="Panel_MouseRightButtonUp">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#00F0FF" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Width="34" Height="34" CornerRadius="10" Background="#2234D399" Margin="0,0,12,0">
-                                        <TextBlock Style="{StaticResource FluentIcon}" Text="&#xE774;" FontSize="15" Foreground="#34D399"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="Сервер" FontSize="10" Foreground="{StaticResource TextSecondary}"/>
-                                        <TextBlock Text="Авто · Самый быстрый" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                    <Border Grid.Column="2" Background="#2234D399" CornerRadius="9" Padding="8,4" VerticalAlignment="Center">
-                                        <TextBlock Text="WIREGUARD" FontSize="9" FontWeight="Bold" Foreground="#34D399"/>
-                                    </Border>
+                                    <TextBlock Text="📋 БУФЕР" FontSize="12" FontWeight="Bold" Foreground="#00F0FF" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="← ESC" FontSize="11" Foreground="#8B97A8" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="ClipboardCloseBtn_Click"/>
                                 </Grid>
-                            </Border>
-                            <Viewbox Grid.Row="1" Stretch="Uniform" MaxWidth="150" MaxHeight="150" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Grid Width="200" Height="200">
-                                    <Ellipse x:Name="PulseRing1" Stroke="#4034D399" StrokeThickness="3" Opacity="0" RenderTransformOrigin="0.5,0.5"/>
-                                    <Ellipse x:Name="PulseRing2" Stroke="#2034D399" StrokeThickness="3" Opacity="0" RenderTransformOrigin="0.5,0.5"/>
-                                    <Button x:Name="VpnToggleBtn" Width="140" Height="140" Cursor="Hand" Click="VpnToggleBtn_Click" FocusVisualStyle="{x:Null}">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Grid RenderTransformOrigin="0.5,0.5">
-                                                    <Grid.RenderTransform>
-                                                        <ScaleTransform x:Name="vsc" ScaleX="1" ScaleY="1"/>
-                                                    </Grid.RenderTransform>
-                                                    <Ellipse x:Name="BtnBg" Fill="{StaticResource VpnOffGradient}" Stroke="#33FFFFFF" StrokeThickness="2"/>
-                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Grid>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Trigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetName="vsc" Storyboard.TargetProperty="ScaleX" To="1.04" Duration="0:0:0.15"/>
-                                                                    <DoubleAnimation Storyboard.TargetName="vsc" Storyboard.TargetProperty="ScaleY" To="1.04" Duration="0:0:0.15"/>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </Trigger.EnterActions>
-                                                        <Trigger.ExitActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetName="vsc" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.2"/>
-                                                                    <DoubleAnimation Storyboard.TargetName="vsc" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.2"/>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </Trigger.ExitActions>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                            <TextBlock x:Name="VpnIcon" Style="{StaticResource FluentIcon}" Text="&#xE7E8;" FontSize="44" Foreground="{StaticResource TextSecondary}"/>
-                                            <TextBlock x:Name="VpnStatusText" Text="Выкл" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                                <TextBox x:Name="ClipboardSearchBox" Grid.Row="1" Style="{StaticResource SearchBox}" Margin="0,0,0,10"
+                                         TextChanged="ClipboardSearchBox_TextChanged"/>
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Content="ВСЕ" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="FilterClip_Click" Tag="all"/>
+                                    <Button Content="📝 ТЕКСТ" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="FilterClip_Click" Tag="text"/>
+                                    <Button Content="🖼 КАРТИНКИ" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="FilterClip_Click" Tag="image"/>
+                                    <Button Content="🎨 ЦВЕТА" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="FilterClip_Click" Tag="color"/>
+                                    <Button Content="🔗 ССЫЛКИ" Style="{StaticResource ChipButton}" Click="FilterClip_Click" Tag="url"/>
+                                </StackPanel>
+                                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="ClipboardLargeStack"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- МЕНЕДЖЕР ПОЛКИ -->
+                        <Border x:Name="ShelfPanel" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" Grid.RowSpan="4"
+                                Background="#0A0A10" BorderBrush="#00FF88" BorderThickness="2"
+                                CornerRadius="16" Padding="16" Visibility="Collapsed" Margin="4"
+                                MouseRightButtonUp="Panel_MouseRightButtonUp">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#00FF88" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="📁 ПОЛКА" FontSize="12" FontWeight="Bold" Foreground="#00FF88" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="← ESC" FontSize="11" Foreground="#8B97A8" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="ShelfCloseBtn_Click"/>
+                                </Grid>
+                                <TextBox x:Name="ShelfSearchBox" Grid.Row="1" Style="{StaticResource SearchBox}" Margin="0,0,0,10"
+                                         TextChanged="ShelfSearchBox_TextChanged"/>
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Content="📅 ДАТА" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="SortShelf_Click" Tag="date"/>
+                                    <Button Content="🔤 ИМЯ" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="SortShelf_Click" Tag="name"/>
+                                    <Button Content="📦 РАЗМЕР" Style="{StaticResource ChipButton}" Margin="0,0,6,0" Click="SortShelf_Click" Tag="size"/>
+                                    <Button Content="🖼 КАРТИНКИ" Style="{StaticResource ChipButton}" Click="FilterShelf_Click" Tag="image"/>
+                                </StackPanel>
+                                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                                    <WrapPanel x:Name="ShelfLargeGrid"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- АУДИО-ПАНЕЛЬ -->
+                        <Border x:Name="AudioPanel" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" Grid.RowSpan="4"
+                                Background="#0A0A10" BorderBrush="#A78BFA" BorderThickness="2"
+                                CornerRadius="16" Padding="16" Visibility="Collapsed" Margin="4"
+                                MouseRightButtonUp="Panel_MouseRightButtonUp">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#A78BFA" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="🎧 АУДИО" FontSize="12" FontWeight="Bold" Foreground="#A78BFA" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="← ESC" FontSize="11" Foreground="#8B97A8" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="AudioCloseBtn_Click"/>
+                                </Grid>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="DeviceLargeStack"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- СИСТЕМА -->
+                        <Border x:Name="SystemPanel" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" Grid.RowSpan="4"
+                                Background="#0A0A10" BorderBrush="#FFB020" BorderThickness="2"
+                                CornerRadius="16" Padding="16" Visibility="Collapsed" Margin="4"
+                                MouseRightButtonUp="Panel_MouseRightButtonUp">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#FFB020" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="📊 СИСТЕМА" FontSize="12" FontWeight="Bold" Foreground="#FFB020" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="← ESC" FontSize="11" Foreground="#8B97A8" Background="Transparent" BorderThickness="0" Cursor="Hand" Click="SystemCloseBtn_Click"/>
+                                </Grid>
+                                <Grid Grid.Row="1" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Content="🧹 RAM" Style="{StaticResource ChipButton}" Margin="0,0,4,0" Click="FreeRam_Click"/>
+                                    <Button Grid.Column="1" Content="☀️ ЯРКОСТЬ" Style="{StaticResource ChipButton}" Margin="2,0,4,0" Click="BrightnessBtn_Click"/>
+                                    <Button Grid.Column="2" Content="🌙 НОЧЬ" Style="{StaticResource ChipButton}" Margin="2,0,0,0" Click="NightLightBtn_Click"/>
+                                </Grid>
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,6,0">
+                                        <StackPanel>
+                                            <TextBlock Text="ТОП CPU" FontSize="9" FontWeight="Bold" Foreground="#4A5568" Margin="0,0,0,6"/>
+                                            <StackPanel x:Name="CpuProcessStack"/>
                                         </StackPanel>
-                                    </Button>
+                                    </ScrollViewer>
+                                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="6,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="ТОП RAM" FontSize="9" FontWeight="Bold" Foreground="#4A5568" Margin="0,0,0,6"/>
+                                            <StackPanel x:Name="RamProcessStack"/>
+                                        </StackPanel>
+                                    </ScrollViewer>
                                 </Grid>
-                            </Viewbox>
-                            <TextBlock x:Name="VpnDetailsText" Grid.Row="2" Text="Нажми, чтобы защитить соединение" FontSize="12" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                        </Grid>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Grid>
             </Border>

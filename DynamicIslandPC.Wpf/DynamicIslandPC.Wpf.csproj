@@ -1,29 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows10.0.22000.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UseWPF>true</UseWPF>
-
 		<AssemblyName>DynamicIslandPC</AssemblyName>
 		<RootNamespace>DynamicIslandPC.Wpf</RootNamespace>
 		<ApplicationIcon Condition="Exists('Icon.ico')">Icon.ico</ApplicationIcon>
 		<Product>Dynamic Island PC</Product>
-		<AssemblyTitle>Dynamic Island PC</AssemblyTitle>
 		<Version>1.0.0</Version>
-		<FileVersion>1.0.0.0</FileVersion>
-		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<SatelliteResourceLanguages>ru;en</SatelliteResourceLanguages>
 	</PropertyGroup>
-
 	<ItemGroup>
 		<PackageReference Include="NAudio" Version="2.2.0" />
 		<PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
+		<PackageReference Include="System.Management" Version="8.0.0" />
+		<PackageReference Include="System.Drawing.Common" Version="8.0.0" />
 		<PackageReference Include="Dubya.WindowsMediaController" Version="2.5.6" />
 	</ItemGroup>
-
 	<ItemGroup>
 		<Content Include="tools\SoundVolumeView.exe" Condition="Exists('tools\SoundVolumeView.exe')">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -31,5 +26,4 @@
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 		</Content>
 	</ItemGroup>
-
 </Project>

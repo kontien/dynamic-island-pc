@@ -1,234 +1,211 @@
-﻿using System;
-using System.Diagnostics;
+﻿using DynamicIslandPC.Wpf.Infrastructure;
+using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using Windows.Media.Control;
+using Windows.Storage.Streams;
 
 namespace DynamicIslandPC.Wpf.Services
 {
     public class MediaSessionService : IDisposable
     {
         private GlobalSystemMediaTransportControlsSessionManager? _manager;
-        private GlobalSystemMediaTransportControlsSession? _current;
-        private DispatcherTimer? _fallbackTimer;
-        private SynchronizationContext? _sync;
+        private GlobalSystemMediaTransportControlsSession? _session;
         private bool _disposed;
-        private bool _updating;
-        private string _lastKey = "";
-        private bool _lastPlaying;
 
         public event Action<string, string, BitmapImage?>? TrackChanged;
         public event Action<bool>? PlaybackStateChanged;
+        public event Action<TimeSpan, TimeSpan>? TimelineChanged;
 
-        public bool HasActiveSession => _current != null;
-
-        public async void Start()
+        public async Task StartAsync(CancellationToken ct)
         {
-            _sync = SynchronizationContext.Current;
             try
             {
                 _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
                 _manager.CurrentSessionChanged += OnCurrentSessionChanged;
-
-                _fallbackTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
-                _fallbackTimer.Tick += (s, e) => Refresh();
-                _fallbackTimer.Start();
-
-                Rehook();
-                Refresh();
+                await AttachSessionAsync(_manager.GetCurrentSession());
+                Log.Info("[MediaSession] запущен");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MediaSession] Start failed: {ex.Message}");
+                Log.Error("[MediaSession] start", ex);
             }
         }
 
-        private void OnCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, CurrentSessionChangedEventArgs args)
-            => Post(Refresh);
-
-        private void OnSessionMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender, MediaPropertiesChangedEventArgs args)
-            => Post(Refresh);
-
-        private void OnSessionPlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
-            => Post(Refresh);
-
-        private void Post(Action a)
+        private async void OnCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender, object args)
         {
-            if (_sync != null) _sync.Post(_ => a(), null);
-            else a();
+            await AttachSessionAsync(sender.GetCurrentSession());
         }
 
-        // Выбираем сессию: сначала "focused", иначе любую играющую, иначе первую
-        private GlobalSystemMediaTransportControlsSession? PickSession()
+        private async Task AttachSessionAsync(GlobalSystemMediaTransportControlsSession? session)
         {
-            if (_manager == null) return null;
+            if (_session != null)
+            {
+                _session.MediaPropertiesChanged -= OnMediaPropertiesChanged;
+                _session.PlaybackInfoChanged -= OnPlaybackInfoChanged;
+                _session.TimelinePropertiesChanged -= OnTimelinePropertiesChanged;
+            }
+
+            _session = session;
+            if (_session == null) return;
+
+            _session.MediaPropertiesChanged += OnMediaPropertiesChanged;
+            _session.PlaybackInfoChanged += OnPlaybackInfoChanged;
+            _session.TimelinePropertiesChanged += OnTimelinePropertiesChanged;
+            await RaiseAllAsync();
+        }
+
+        private async void OnMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender, object args)
+        {
+            await RaiseTrackAsync();
+        }
+
+        private void OnPlaybackInfoChanged(GlobalSystemMediaTransportControlsSession sender, PlaybackInfoChangedEventArgs args)
+        {
             try
             {
-                var cur = _manager.GetCurrentSession();
-                if (cur != null) return cur;
-                var all = _manager.GetSessions();
-                return all.FirstOrDefault(s => SafePlaying(s)) ?? all.FirstOrDefault();
+                var info = sender.GetPlaybackInfo();
+                bool isPlaying = info.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+                PlaybackStateChanged?.Invoke(isPlaying);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("[MediaSession] playback: " + ex.Message);
+            }
+        }
+
+        private void OnTimelinePropertiesChanged(GlobalSystemMediaTransportControlsSession sender, TimelinePropertiesChangedEventArgs args)
+        {
+            try
+            {
+                var tl = sender.GetTimelineProperties();
+                TimelineChanged?.Invoke(tl.Position, tl.EndTime);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("[MediaSession] timeline: " + ex.Message);
+            }
+        }
+
+        // ===== НОВОЕ: ручной опрос позиции (для YouTube/браузеров, где событие приходит редко) =====
+        public void PollTimeline()
+        {
+            if (_session == null) return;
+            try
+            {
+                var tl = _session.GetTimelineProperties();
+                TimelineChanged?.Invoke(tl.Position, tl.EndTime);
+            }
+            catch { }
+        }
+
+        private async Task RaiseAllAsync()
+        {
+            await RaiseTrackAsync();
+            try
+            {
+                if (_session != null)
+                {
+                    var info = _session.GetPlaybackInfo();
+                    PlaybackStateChanged?.Invoke(info.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing);
+                    var tl = _session.GetTimelineProperties();
+                    TimelineChanged?.Invoke(tl.Position, tl.EndTime);
+                }
+            }
+            catch { }
+        }
+
+        private async Task RaiseTrackAsync()
+        {
+            if (_session == null) return;
+            try
+            {
+                var props = await _session.TryGetMediaPropertiesAsync();
+                BitmapImage? cover = null;
+                if (props.Thumbnail != null)
+                {
+                    cover = await LoadThumbnailAsync(props.Thumbnail);
+                }
+                TrackChanged?.Invoke(props.Title, props.Artist, cover);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("[MediaSession] track: " + ex.Message);
+            }
+        }
+
+        private static async Task<BitmapImage?> LoadThumbnailAsync(IRandomAccessStreamReference reference)
+        {
+            try
+            {
+                using var stream = await reference.OpenReadAsync();
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.StreamSource = stream.AsStreamForRead();
+                bmp.EndInit();
+                bmp.Freeze();
+                return bmp;
             }
             catch { return null; }
         }
 
-        private static bool SafePlaying(GlobalSystemMediaTransportControlsSession s)
-        {
-            try { return s.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing; }
-            catch { return false; }
-        }
-
-        private void Rehook()
-        {
-            if (_current != null)
-            {
-                try
-                {
-                    _current.MediaPropertiesChanged -= OnSessionMediaPropertiesChanged;
-                    _current.PlaybackInfoChanged -= OnSessionPlaybackInfoChanged;
-                }
-                catch { }
-            }
-            _current = PickSession();
-            if (_current != null)
-            {
-                try
-                {
-                    _current.MediaPropertiesChanged += OnSessionMediaPropertiesChanged;
-                    _current.PlaybackInfoChanged += OnSessionPlaybackInfoChanged;
-                }
-                catch { }
-            }
-        }
-
-        private void Refresh()
-        {
-            if (_disposed) return;
-            if (_manager == null) { _ = TryReinit(); return; }
-
-            var picked = PickSession();
-            if (!ReferenceEquals(picked, _current)) Rehook();
-
-            if (_current == null)
-            {
-                if (_lastKey != "")
-                {
-                    _lastKey = "";
-                    TrackChanged?.Invoke("", "", null);
-                }
-                if (_lastPlaying) { _lastPlaying = false; PlaybackStateChanged?.Invoke(false); }
-                return;
-            }
-            _ = UpdateAsync(_current);
-        }
-
-        private async Task TryReinit()
-        {
-            try
-            {
-                _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-                _manager.CurrentSessionChanged += OnCurrentSessionChanged;
-                Rehook();
-            }
-            catch { }
-        }
-
-        private async Task UpdateAsync(GlobalSystemMediaTransportControlsSession session)
-        {
-            if (_updating || _disposed) return;
-            _updating = true;
-            try
-            {
-                var props = await session.TryGetMediaPropertiesAsync();
-                if (_disposed || !ReferenceEquals(session, _current)) return;
-
-                string title = props?.Title ?? "";
-                string artist = props?.Artist ?? "";
-
-                BitmapImage? cover = null;
-                if (props?.Thumbnail != null)
-                {
-                    try
-                    {
-                        using var rs = await props.Thumbnail.OpenReadAsync();
-                        cover = new BitmapImage();
-                        cover.BeginInit();
-                        cover.StreamSource = rs.AsStreamForRead();
-                        cover.CacheOption = BitmapCacheOption.OnLoad;
-                        cover.EndInit();
-                        cover.Freeze();
-                    }
-                    catch { cover = null; }
-                }
-
-                bool playing = SafePlaying(session);
-                string key = $"{session.SourceAppUserModelId}|{title}|{artist}";
-
-                if (key != _lastKey)
-                {
-                    _lastKey = key;
-                    TrackChanged?.Invoke(title, artist, cover);
-                }
-                if (playing != _lastPlaying)
-                {
-                    _lastPlaying = playing;
-                    PlaybackStateChanged?.Invoke(playing);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[MediaSession] Update failed: {ex.Message}");
-            }
-            finally { _updating = false; }
-        }
-
         public async Task TogglePlayPauseAsync()
         {
-            var s = _current ?? PickSession();
-            if (s == null) return;
+            if (_session == null) return;
             try
             {
-                if (SafePlaying(s)) await s.TryPauseAsync();
-                else await s.TryPlayAsync();
+                var info = _session.GetPlaybackInfo();
+                if (info.Controls.IsPlayPauseToggleEnabled)
+                    await _session.TryTogglePlayPauseAsync();
+                else if (info.Controls.IsPlayEnabled)
+                    await _session.TryPlayAsync();
+                else if (info.Controls.IsPauseEnabled)
+                    await _session.TryPauseAsync();
             }
-            catch { }
-        }
-
-        public async Task NextAsync()
-        {
-            var s = _current ?? PickSession();
-            if (s == null) return;
-            try { await s.TrySkipNextAsync(); } catch { }
+            catch (Exception ex) { Log.Warn("[MediaSession] toggle: " + ex.Message); }
         }
 
         public async Task PrevAsync()
         {
-            var s = _current ?? PickSession();
-            if (s == null) return;
-            try { await s.TrySkipPreviousAsync(); } catch { }
+            if (_session == null) return;
+            try { await _session.TrySkipPreviousAsync(); }
+            catch (Exception ex) { Log.Warn("[MediaSession] prev: " + ex.Message); }
+        }
+
+        public async Task NextAsync()
+        {
+            if (_session == null) return;
+            try { await _session.TrySkipNextAsync(); }
+            catch (Exception ex) { Log.Warn("[MediaSession] next: " + ex.Message); }
+        }
+
+        public async Task SeekAsync(TimeSpan position)
+        {
+            if (_session == null) return;
+            try
+            {
+                var info = _session.GetPlaybackInfo();
+                if (info.Controls.IsPlaybackPositionEnabled)
+                    await _session.TryChangePlaybackPositionAsync(position.Ticks);
+            }
+            catch (Exception ex) { Log.Warn("[MediaSession] seek: " + ex.Message); }
         }
 
         public void Dispose()
         {
+            if (_disposed) return;
             _disposed = true;
-            _fallbackTimer?.Stop();
-            if (_current != null)
+            if (_session != null)
             {
-                try
-                {
-                    _current.MediaPropertiesChanged -= OnSessionMediaPropertiesChanged;
-                    _current.PlaybackInfoChanged -= OnSessionPlaybackInfoChanged;
-                }
-                catch { }
+                _session.MediaPropertiesChanged -= OnMediaPropertiesChanged;
+                _session.PlaybackInfoChanged -= OnPlaybackInfoChanged;
+                _session.TimelinePropertiesChanged -= OnTimelinePropertiesChanged;
             }
             if (_manager != null)
-            {
-                try { _manager.CurrentSessionChanged -= OnCurrentSessionChanged; } catch { }
-            }
+                _manager.CurrentSessionChanged -= OnCurrentSessionChanged;
         }
     }
 }
