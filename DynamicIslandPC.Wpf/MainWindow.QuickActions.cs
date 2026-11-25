@@ -13,42 +13,76 @@ namespace DynamicIslandPC.Wpf
     public partial class MainWindow
     {
         private void QuickPin_Click(object sender, RoutedEventArgs e) => TogglePin();
+
         private void TogglePin()
         {
             _pinned = !_pinned;
             PinIndicator.Visibility = _pinned ? Visibility.Visible : Visibility.Collapsed;
-            PinMenuItem.Header = _pinned ? "📌 Открепить" : "📌 Закрепить";
-            QuickPin.Background = _pinned ? new SolidColorBrush(Color.FromArgb(40, 255, 176, 32)) : (SolidColorBrush)FindResource("CardBg");
-            QuickPin.BorderBrush = _pinned ? new SolidColorBrush(Color.FromArgb(120, 255, 176, 32)) : (SolidColorBrush)FindResource("Hair");
+            PinMenuItem.Header = _pinned ? "📌 Открепить остров" : "📌 Закрепить остров";
+            RefreshQuickToggles();
+            if (!_pinned)
+            {
+                _hasWindowUnder = IsWindowUnderIsland();
+                if (!_isExpanded) ApplyCollapsedKind();
+            }
+        }
+
+        internal void RefreshQuickToggles()
+        {
+            if (QuickPin == null || QuickDnd == null) return;
+            PaintQuick(QuickPin, _pinned);
+            PaintQuick(QuickDnd, _dnd);
+        }
+
+        private void PaintQuick(Button b, bool on)
+        {
+            b.Background = on ? (SolidColorBrush)FindResource("AccentColor") : (SolidColorBrush)FindResource("CardBg");
+            b.Foreground = on ? (SolidColorBrush)FindResource("OnAccent") : (SolidColorBrush)FindResource("TextPrimary");
+            b.BorderBrush = on ? (SolidColorBrush)FindResource("AccentColor") : (SolidColorBrush)FindResource("Hair");
         }
 
         private void QuickShot_Click(object sender, RoutedEventArgs e) => CaptureScreenshot();
+
         private void CaptureScreenshot()
         {
             try
             {
-                var region = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
+                var region = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+                                      SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
                 var bmp = ScreenshotService.CaptureRegion(region);
                 string path = ScreenshotService.SavePng(bmp);
                 _shelf.AddFiles(new[] { path });
                 DispatchToUi(() => ShowScreenshotConfirmation(IOPath.GetFileName(path)));
             }
-            catch (Exception ex) { Log.Error("[Screenshot] capture/save", ex); DispatchToUi(() => ShowScreenshotConfirmation("Ошибка снимка", isError: true)); }
+            catch (Exception ex)
+            {
+                Log.Error("[Screenshot] capture/save", ex);
+                DispatchToUi(() => ShowScreenshotConfirmation("Ошибка снимка", isError: true));
+            }
         }
 
         private void ShowScreenshotConfirmation(string message, bool isError = false)
         {
-            _osdHideTimer.Stop(); _osdShown = true;
-            SmallOsdIcon.Text = isError ? "⚠️" : "📸"; LargeOsdIcon.Text = isError ? "⚠️" : "📸";
-            SmallOsdAppName.Text = isError ? message : $"Снимок сохранён: {message}";
-            LargeOsdAppName.Text = isError ? message : $"Снимок сохранён: {message}";
-            SmallOsdPercentText.Text = ""; LargeOsdPercentText.Text = "✓";
-            SmallOsdProgress.Visibility = Visibility.Collapsed; LargeOsdProgress.Visibility = Visibility.Collapsed;
-            SmallOsd.Visibility = Visibility.Visible; LargeOsd.Visibility = Visibility.Collapsed;
+            _osdHideTimer.Stop();
+            _osdShown = true;
+
+            SmallOsdIcon.Text = isError ? "⚠️" : "📸";
+            LargeOsdIcon.Text = isError ? "⚠️" : "📸";
+            SmallOsdAppName.Text = isError ? message : $"Сохранено: {message}";
+            LargeOsdAppName.Text = SmallOsdAppName.Text;
+            SmallOsdPercentText.Text = "";
+            LargeOsdPercentText.Text = isError ? "!" : "✓";
+            SmallOsdProgress.Visibility = Visibility.Collapsed;
+            LargeOsdProgress.Visibility = Visibility.Collapsed;
+            SmallOsd.Visibility = Visibility.Visible;
+            LargeOsd.Visibility = Visibility.Collapsed;
             OsdGrid.Visibility = Visibility.Visible;
-            OsdGrid.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(120)));
-            TopPanel.Visibility = Visibility.Visible;
-            TopPanel.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(120)));
+            OsdGrid.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(GlassMs(140))) { EasingFunction = GlassEase });
+
+            var fadeHeader = new DoubleAnimation(0, TimeSpan.FromMilliseconds(GlassMs(110))) { EasingFunction = GlassEase };
+            fadeHeader.Completed += (s, e) => { if (_osdShown) TopPanel.Visibility = Visibility.Collapsed; };
+            TopPanel.BeginAnimation(OpacityProperty, fadeHeader);
+
             _osdHideTimer.Interval = TimeSpan.FromSeconds(2.5);
             _osdHideTimer.Start();
         }
@@ -65,14 +99,35 @@ namespace DynamicIslandPC.Wpf
         private void QuickDnd_Click(object sender, RoutedEventArgs e)
         {
             _dnd = !_dnd;
-            QuickDnd.Background = _dnd ? new SolidColorBrush(Color.FromArgb(40, 167, 139, 250)) : (SolidColorBrush)FindResource("CardBg");
-            QuickDnd.BorderBrush = _dnd ? new SolidColorBrush(Color.FromArgb(120, 167, 139, 250)) : (SolidColorBrush)FindResource("Hair");
+            RefreshQuickToggles();
             if (_dnd) HideOSD();
         }
 
-        private void Window_DragOver(object sender, DragEventArgs e) { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop, true) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; }
-        private void Window_Drop(object sender, DragEventArgs e) { try { if (e.Data.GetDataPresent(DataFormats.FileDrop, true) && e.Data.GetData(DataFormats.FileDrop, true) is string[] files) _shelf.AddFiles(files); } catch (Exception ex) { Log.Error("[Shelf] drop", ex); } finally { e.Handled = true; } }
-        private void IslandBorder_MouseUp(object sender, MouseButtonEventArgs e) { if (e.ChangedButton == MouseButton.Middle) TogglePin(); }
+        private void Window_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop, true) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                if (e.Data.GetDataPresent(DataFormats.FileDrop, true) && e.Data.GetData(DataFormats.FileDrop, true) is string[] files)
+                {
+                    _shelf.AddFiles(files);
+                    ShowScreenshotConfirmation($"На полку: {files.Length} файл(ов)");
+                }
+            }
+            catch (Exception ex) { Log.Error("[Shelf] drop", ex); }
+            finally { e.Handled = true; }
+        }
+
+        private void IslandBorder_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Middle) TogglePin();
+        }
+
         private void PinMenuItem_Click(object sender, RoutedEventArgs e) => TogglePin();
         private void MenuClearClipboard_Click(object sender, RoutedEventArgs e) => _clipboard.Clear();
         private void MenuClearShelf_Click(object sender, RoutedEventArgs e) => _shelf.Clear();

@@ -1,5 +1,5 @@
-﻿using System.Windows;
-using System.Windows.Controls;
+﻿using System;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using DynamicIslandPC.Wpf.Infrastructure;
@@ -10,11 +10,14 @@ namespace DynamicIslandPC.Wpf
     {
         private void UpdateVpnUi(bool isConnected)
         {
+            if (VpnTileBorder == null) return;
+
             if (isConnected)
             {
                 VpnTileBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(16, 185, 129));
                 VpnTileBorder.Background = new SolidColorBrush(Color.FromArgb(30, 16, 185, 129));
-                VpnIcon.Text = "🛡️"; VpnStatusText.Text = "Вкл";
+                VpnIcon.Text = "🛡";
+                VpnStatusText.Text = "Вкл";
                 VpnStatusText.Foreground = (SolidColorBrush)FindResource("Lime");
                 VpnDetailsText.Text = "защищено";
                 VpnIndicatorText.Visibility = Visibility.Visible;
@@ -23,7 +26,8 @@ namespace DynamicIslandPC.Wpf
             {
                 VpnTileBorder.BorderBrush = (SolidColorBrush)FindResource("Hair");
                 VpnTileBorder.Background = (SolidColorBrush)FindResource("CardBg");
-                VpnIcon.Text = "⏻"; VpnStatusText.Text = "Выкл";
+                VpnIcon.Text = "⏻";
+                VpnStatusText.Text = "Выкл";
                 VpnStatusText.Foreground = (SolidColorBrush)FindResource("TextSecondary");
                 VpnDetailsText.Text = "подключить";
                 VpnIndicatorText.Visibility = Visibility.Collapsed;
@@ -34,10 +38,20 @@ namespace DynamicIslandPC.Wpf
         {
             if (_isVpnToggling) return;
             _isVpnToggling = true;
-            VpnIcon.Text = "⏳"; VpnStatusText.Text = "Связь…";
+            VpnIcon.Text = "⏳";
+            VpnStatusText.Text = "Связь…";
+            VpnDetailsText.Text = "ожидание";
             try { await _vpnService.ToggleAsync(); }
-            catch (Exception ex) { Log.Error("[VPN] toggle", ex); }
-            _isVpnToggling = false;
+            catch (Exception ex)
+            {
+                Log.Error("[VPN] toggle", ex);
+                VpnDetailsText.Text = "ошибка";
+            }
+            finally
+            {
+                _isVpnToggling = false;
+                UpdateVpnUi(_vpnService.IsConnected);
+            }
         }
     }
 }

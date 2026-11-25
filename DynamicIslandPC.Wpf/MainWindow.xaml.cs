@@ -24,7 +24,7 @@ namespace DynamicIslandPC.Wpf
         private const int COLLAPSED_WIDTH = 280;
         private const int COLLAPSED_HEIGHT = 44;
         private const int EXPANDED_WIDTH = 640;
-        private const int EXPANDED_HEIGHT = 520;
+        private const int EXPANDED_HEIGHT = 620;
         private const int DOT_WIDTH = 20;
         private const int DOT_HEIGHT = 20;
         private const int HEAD_COLLAPSED = 44;
@@ -41,6 +41,7 @@ namespace DynamicIslandPC.Wpf
         private readonly AppVolumeService _appVolume;
         private readonly SystemMonitorService _systemMonitor = new();
         private readonly MediaSessionService _mediaSession = new();
+        private readonly NotificationService _notifService = new();
         private readonly VpnService _vpnService = new();
         private readonly CancellationTokenSource _lifetimeCts = new();
 
@@ -76,6 +77,7 @@ namespace DynamicIslandPC.Wpf
         private readonly DispatcherTimer _systemMonitorTimer = new();
         private readonly DispatcherTimer _eqTimer = new();
         private readonly DispatcherTimer _timelineTimer = new();
+        private readonly DispatcherTimer _processTimer = new();
 
         public MainWindow()
         {
@@ -126,13 +128,25 @@ namespace DynamicIslandPC.Wpf
             _eqTimer.Tick += (s, e) => AnimateEq();
             _eqTimer.Start();
 
-            // ===== НОВОЕ: поллер таймлайна раз в секунду (для YouTube/браузеров) =====
             _timelineTimer.Interval = TimeSpan.FromSeconds(1);
-            _timelineTimer.Tick += (s, e) => _mediaSession.PollTimeline();
+            _timelineTimer.Tick += (s, e) => PollMediaTimeline();
             _timelineTimer.Start();
 
+            _processTimer.Interval = TimeSpan.FromSeconds(2);
+            _processTimer.Tick += (s, e) =>
+            {
+                if (_isTileFocused && SystemPanel.Visibility == Visibility.Visible) BuildProcessList();
+            };
+            _processTimer.Start();
+
             SubscribeServices();
+
+            InitGlass();
+            InitNotifications();
+
             _ = _mediaSession.StartAsync(_lifetimeCts.Token);
+            _ = _notifService.StartAsync(_lifetimeCts.Token);
+
             UpdateVpnUi(_vpnService.IsConnected);
 
             _isUpdatingVolume = true;
@@ -150,6 +164,16 @@ namespace DynamicIslandPC.Wpf
 
             Left = SystemParameters.WorkArea.Left + (SystemParameters.WorkArea.Width - 900) / 2;
             Top = SystemParameters.WorkArea.Top;
+        }
+
+        private void PollMediaTimeline()
+        {
+            try
+            {
+                var m = _mediaSession.GetType().GetMethod("PollTimeline", Type.EmptyTypes);
+                m?.Invoke(_mediaSession, null);
+            }
+            catch { }
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -194,6 +218,7 @@ namespace DynamicIslandPC.Wpf
             BuildClipboardList();
             UpdateShelfCount();
             BuildShelfList();
+            _hasWindowUnder = IsWindowUnderIsland();
         }
 
         private void EnsureClipboardListener()
@@ -209,7 +234,7 @@ namespace DynamicIslandPC.Wpf
             _isClosing = true;
             _lifetimeCts.Cancel();
             _clockTimer.Stop(); _osdHideTimer.Stop(); _layoutTimer.Stop(); _hoverTimer.Stop();
-            _systemMonitorTimer.Stop(); _eqTimer.Stop(); _timelineTimer.Stop();
+            _systemMonitorTimer.Stop(); _eqTimer.Stop(); _timelineTimer.Stop(); _processTimer.Stop();
             UnsubscribeServices();
             TryCleanup(() => _appVolume.Dispose(), "app volume");
             TryCleanup(() => _hotkeyService?.Dispose(), "hotkeys");
@@ -220,6 +245,7 @@ namespace DynamicIslandPC.Wpf
             TryCleanup(_audio.Dispose, "audio");
             TryCleanup(_systemMonitor.Dispose, "system monitor");
             TryCleanup(_mediaSession.Dispose, "media session");
+            TryCleanup(_notifService.Dispose, "notifications");
             TryCleanup(_vpnService.Dispose, "VPN service");
             _lifetimeCts.Dispose();
             base.OnClosed(e);

@@ -1,8 +1,6 @@
-﻿using System;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 
 namespace DynamicIslandPC.Wpf
 {
@@ -10,74 +8,101 @@ namespace DynamicIslandPC.Wpf
     {
         private static Grid RowShell(double height)
         {
-            var g = new Grid { Height = height, Margin = new Thickness(0, 0, 0, 3) };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+            var g = new Grid { Height = height, Margin = new Thickness(0, 0, 0, 3), Background = Brushes.Transparent };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var normal = new SolidColorBrush(Color.FromArgb(15, 255, 255, 255));
-            var hover = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
-            g.Background = normal;
-            g.MouseEnter += (s, e) => g.Background = hover;
-            g.MouseLeave += (s, e) => g.Background = normal;
+
+            var host = new Border
+            {
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(Color.FromArgb(0x14, 255, 255, 255)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x00, 255, 255, 255)),
+                BorderThickness = new Thickness(1)
+            };
+            Grid.SetColumn(host, 0);
+            Grid.SetColumnSpan(host, 3);
+            g.Children.Add(host);
+
+            g.MouseEnter += (s, e) =>
+            {
+                host.Background = new SolidColorBrush(Color.FromArgb(0x24, 255, 255, 255));
+                host.BorderBrush = new SolidColorBrush(Color.FromArgb(0x2E, 255, 255, 255));
+            };
+            g.MouseLeave += (s, e) =>
+            {
+                host.Background = new SolidColorBrush(Color.FromArgb(0x14, 255, 255, 255));
+                host.BorderBrush = new SolidColorBrush(Color.FromArgb(0x00, 255, 255, 255));
+            };
             return g;
         }
 
         private static TextBlock RowText(string text, int col, int fontSize)
         {
-            var t = new TextBlock { Text = text, FontSize = fontSize, Foreground = new SolidColorBrush(Colors.White), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 4, 0), TextTrimming = TextTrimming.CharacterEllipsis };
+            var t = new TextBlock
+            {
+                Text = text,
+                FontSize = fontSize,
+                Foreground = new SolidColorBrush(Colors.White),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(7, 0, 6, 0),
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
             Grid.SetColumn(t, col);
             return t;
         }
 
-        private static TextBlock EmptyHint(string text) => new TextBlock { Text = text, FontSize = 10, Foreground = new SolidColorBrush(Color.FromRgb(139, 151, 168)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 8, 0, 8) };
+        private static TextBlock EmptyHint(string text) => new TextBlock
+        {
+            Text = text,
+            FontSize = 11,
+            Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0xA2)),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 14, 0, 14)
+        };
 
-        private static TextBlock CenterIcon(string glyph, int size) => new TextBlock { Text = glyph, FontSize = size * 0.6, FontFamily = new FontFamily("Segoe UI Emoji"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        private static TextBlock CenterIcon(string glyph, int size) => new TextBlock
+        {
+            Text = glyph,
+            FontSize = size * 0.62,
+            FontFamily = new FontFamily("Segoe UI Emoji"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
 
         private Button RowActionBtn(string glyph, string tooltip, Action onClick, bool isDanger = false)
         {
-            var b = new Button { Style = (Style)FindResource("IconButton"), Content = glyph, FontSize = 9, Width = 22, Height = 22, ToolTip = tooltip, Foreground = isDanger ? new SolidColorBrush(Color.FromRgb(255, 138, 148)) : (SolidColorBrush)FindResource("TextSecondary") };
+            var b = new Button
+            {
+                Style = (Style)FindResource("IconButton"),
+                Content = glyph,
+                FontSize = 10,
+                Width = 24,
+                Height = 24,
+                ToolTip = tooltip,
+                Foreground = isDanger
+                    ? new SolidColorBrush(Color.FromRgb(0xFF, 0x99, 0xA4))
+                    : (SolidColorBrush)FindResource("TextSecondary")
+            };
             b.Click += (s, e) => { e.Handled = true; onClick(); };
             return b;
         }
 
         private static bool IsSourceButton(DependencyObject? d)
-        { while (d != null) { if (d is Button) return true; d = VisualTreeHelper.GetParent(d); } return false; }
-
-        private static string Truncate(string s, int max) => string.IsNullOrEmpty(s) ? s : (s.Length <= max ? s : s.Substring(0, max - 1) + "…");
-
-        // КАСКАДНАЯ АНИМАЦИЯ ПОЯВЛЕНИЯ ЭЛЕМЕНТОВ
-        public void AnimateStaggered(Panel panel, TimeSpan startDelay = default)
         {
-            if (startDelay == default) startDelay = TimeSpan.Zero;
-            int delayMs = 0;
-            foreach (UIElement child in panel.Children)
+            while (d != null)
             {
-                child.Opacity = 0;
-                child.RenderTransform = new TranslateTransform(0, 10);
-
-                var sb = new Storyboard();
-                var fade = new DoubleAnimation(1, TimeSpan.FromMilliseconds(250))
-                {
-                    BeginTime = startDelay + TimeSpan.FromMilliseconds(delayMs),
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                };
-                var slide = new DoubleAnimation(0, TimeSpan.FromMilliseconds(300))
-                {
-                    BeginTime = startDelay + TimeSpan.FromMilliseconds(delayMs),
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                };
-
-                Storyboard.SetTarget(fade, child);
-                Storyboard.SetTargetProperty(fade, new PropertyPath(OpacityProperty));
-                Storyboard.SetTarget(slide, child);
-                Storyboard.SetTargetProperty(slide, new PropertyPath("(UIElement.RenderTransform).(TranslateTransform.Y)"));
-
-                sb.Children.Add(fade);
-                sb.Children.Add(slide);
-                sb.Begin();
-
-                delayMs += 40;
+                if (d is Button || d is Slider || d is TextBox || d is CheckBox) return true;
+                d = VisualTreeHelper.GetParent(d);
             }
+            return false;
         }
+
+        private static string Truncate(string s, int max) =>
+            string.IsNullOrEmpty(s) ? s : (s.Length <= max ? s : s.Substring(0, max - 1) + "…");
+
+        private static string FormatBytes(long b) =>
+            b >= 1_000_000 ? (b / 1_000_000.0).ToString("0.0") + " МБ" : Math.Max(1, b / 1000) + " КБ";
     }
 }
